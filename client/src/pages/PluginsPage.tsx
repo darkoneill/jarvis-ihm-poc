@@ -27,17 +27,20 @@ import {
   Home,
   Link,
   Package,
+  Play,
   Plug,
   Radio,
   Search,
   Send,
   Settings,
+  Terminal,
   Thermometer,
   Trash2,
   Wifi,
   Wrench,
   Zap,
 } from "lucide-react";
+import { PluginConsole } from "@/components/PluginConsole";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -62,6 +65,8 @@ export default function PluginsPage() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [selectedPlugin, setSelectedPlugin] = useState<any>(null);
   const [pluginConfig, setPluginConfig] = useState<Record<string, any>>({});
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [consolePlugin, setConsolePlugin] = useState<any>(null);
 
   const { data: installedData, refetch: refetchInstalled } = trpc.plugins.listInstalled.useQuery();
   const { data: availableData } = trpc.plugins.listAvailable.useQuery();
@@ -232,6 +237,19 @@ export default function PluginsPage() {
                         {categories.find((c) => c.id === plugin.category)?.name || plugin.category}
                       </Badge>
                       <div className="flex gap-2">
+                        {["mqtt-connector", "home-assistant", "telegram-bot", "zigbee-gateway"].includes(plugin.name) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setConsolePlugin(plugin);
+                              setConsoleOpen(true);
+                            }}
+                            title="Ouvrir la console"
+                          >
+                            <Terminal className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -424,6 +442,16 @@ export default function PluginsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Plugin Console */}
+      {consolePlugin && (
+        <PluginConsole
+          open={consoleOpen}
+          onOpenChange={setConsoleOpen}
+          pluginName={consolePlugin.name}
+          pluginDisplayName={consolePlugin.displayName}
+        />
+      )}
     </div>
   );
 }

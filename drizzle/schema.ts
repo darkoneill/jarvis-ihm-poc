@@ -197,3 +197,106 @@ export const plugins = mysqlTable("plugins", {
 
 export type Plugin = typeof plugins.$inferSelect;
 export type InsertPlugin = typeof plugins.$inferInsert;
+
+
+/**
+ * Custom widgets table for user-created widgets
+ */
+export const customWidgets = mysqlTable("custom_widgets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  widgetType: mysqlEnum("widgetType", ["api", "chart", "text", "iframe", "countdown"]).default("api").notNull(),
+  config: json("config").$type<{
+    // API widget config
+    url?: string;
+    method?: "GET" | "POST" | "PUT" | "DELETE";
+    headers?: Record<string, string>;
+    body?: string;
+    refreshInterval?: number;
+    // Display config
+    displayTemplate?: string;
+    valueExtractor?: string; // JSONPath expression
+    // Chart config
+    chartType?: "line" | "bar" | "pie" | "doughnut";
+    chartData?: unknown;
+    // Iframe config
+    iframeSrc?: string;
+    // Countdown config
+    targetDate?: string;
+    countdownLabel?: string;
+  }>().notNull(),
+  defaultSize: json("defaultSize").$type<{ width: number; height: number }>(),
+  icon: varchar("icon", { length: 100 }),
+  color: varchar("color", { length: 20 }),
+  isPublic: boolean("isPublic").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomWidget = typeof customWidgets.$inferSelect;
+export type InsertCustomWidget = typeof customWidgets.$inferInsert;
+
+/**
+ * Themes table for visual themes
+ */
+export const themes = mysqlTable("themes", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  description: text("description"),
+  colors: json("colors").$type<{
+    background: string;
+    foreground: string;
+    card: string;
+    cardForeground: string;
+    primary: string;
+    primaryForeground: string;
+    secondary: string;
+    secondaryForeground: string;
+    muted: string;
+    mutedForeground: string;
+    accent: string;
+    accentForeground: string;
+    destructive: string;
+    border: string;
+    ring: string;
+  }>().notNull(),
+  fonts: json("fonts").$type<{
+    heading?: string;
+    body?: string;
+    mono?: string;
+  }>(),
+  effects: json("effects").$type<{
+    glowEnabled?: boolean;
+    glowColor?: string;
+    scanlineEnabled?: boolean;
+    particlesEnabled?: boolean;
+    animationsEnabled?: boolean;
+  }>(),
+  preview: text("preview"), // Base64 preview image
+  isBuiltIn: boolean("isBuiltIn").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Theme = typeof themes.$inferSelect;
+export type InsertTheme = typeof themes.$inferInsert;
+
+/**
+ * Plugin executions log table
+ */
+export const pluginExecutions = mysqlTable("plugin_executions", {
+  id: int("id").autoincrement().primaryKey(),
+  pluginId: int("pluginId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(),
+  input: json("input").$type<Record<string, unknown>>(),
+  output: json("output").$type<Record<string, unknown>>(),
+  status: mysqlEnum("status", ["pending", "running", "success", "error"]).default("pending").notNull(),
+  errorMessage: text("errorMessage"),
+  duration: int("duration"), // milliseconds
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PluginExecution = typeof pluginExecutions.$inferSelect;
+export type InsertPluginExecution = typeof pluginExecutions.$inferInsert;

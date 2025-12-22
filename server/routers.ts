@@ -13,6 +13,8 @@ import { preferencesRouter } from "./routes/preferences";
 import { dashboardRouter } from "./routes/dashboard";
 import { conversationsRouter } from "./routes/conversations";
 import { pluginsRouter } from "./routes/plugins";
+import { customWidgetsRouter } from "./routes/customWidgets";
+import { themesRouter } from "./routes/themes";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -40,6 +42,8 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   conversations: conversationsRouter,
   plugins: pluginsRouter,
+  customWidgets: customWidgetsRouter,
+  themes: themesRouter,
 });
 
 export type AppRouter = typeof appRouter;

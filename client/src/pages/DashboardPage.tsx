@@ -29,7 +29,8 @@ import { DraggableWidget } from "@/components/dashboard/DraggableWidget";
 import { renderWidget } from "@/components/dashboard/widgets";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { LayoutGrid, Plus, RotateCcw, Save, Settings2 } from "lucide-react";
+import { LayoutGrid, Plus, RotateCcw, Save, Settings2, Wand2 } from "lucide-react";
+import { CustomWidgetEditor } from "@/components/CustomWidgetEditor";
 
 type WidgetType = 
   | "system_status"
@@ -56,6 +57,7 @@ interface Widget {
 export default function DashboardPage() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  const [customWidgetEditorOpen, setCustomWidgetEditorOpen] = useState(false);
 
   const { data: config, isLoading } = trpc.dashboard.getConfig.useQuery();
   const { data: widgetTypes } = trpc.dashboard.getWidgetTypes.useQuery();
@@ -189,6 +191,11 @@ export default function DashboardPage() {
                   <span className="flex-1">{wt.name}</span>
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setCustomWidgetEditorOpen(true)}>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Widget personnalisé
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -287,6 +294,15 @@ export default function DashboardPage() {
           </p>
         </div>
       )}
+
+      {/* Custom Widget Editor */}
+      <CustomWidgetEditor
+        open={customWidgetEditorOpen}
+        onOpenChange={setCustomWidgetEditorOpen}
+        onSave={() => {
+          toast.success("Widget personnalisé créé");
+        }}
+      />
     </div>
   );
 }

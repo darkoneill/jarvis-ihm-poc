@@ -2,7 +2,8 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { plugins } from "../../drizzle/schema";
+import { plugins, pluginExecutions } from "../../drizzle/schema";
+import { executePlugin, getPluginActions } from "../services/pluginExecutor";
 
 // Plugin categories
 const pluginCategories = ["iot", "sensors", "automation", "integration", "utility", "other"] as const;
@@ -345,4 +346,118 @@ export const pluginsRouter = router({
       { id: "other", name: "Autres", description: "Plugins divers", icon: "Package" },
     ];
   }),
+
+  // Execute a plugin action
+  execute: publicProcedure
+    .input(
+      z.object({
+        pluginName: z.string(),
+        action: z.string(),
+        input: z.record(z.string(), z.unknown()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      // Get plugin config
+      let config: Record<string, unknown> = {};
+      
+      if (db) {
+        try {
+          const pluginRecord = await db
+            .select()
+            .from(plugins)
+            .where(eq(plugins.name, input.pluginName))
+            .limit(1);
+
+          if (pluginRecord.length > 0 && pluginRecord[0].config) {
+            config = pluginRecord[0].config as Record<string, unknown>;
+          }
+        } catch (error) {
+          console.error("Error fetching plugin config:", error);
+        }
+      }
+
+      // Execute the plugin action
+      const result = await executePlugin(
+        input.pluginName,
+        config,
+        input.action,
+        input.input || {}
+      );
+
+      return result;
+    }),
+
+  // Get available actions for a plugin
+  getActions: publicProcedure
+    .input(z.object({ pluginName: z.string() }))
+    .query(({ input }) => {
+      return getPluginActions(input.pluginName);
+    }),
+
+  // Get plugin execution history
+  getExecutionHistory: publicProcedure
+    .input(
+      z.object({
+        pluginName: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db) {
+        return {
+          executions: [
+            {
+              id: 1,
+              pluginId: 1,
+              action: "connect",
+              input: {},
+              output: { connected: true },
+              status: "success",
+              duration: 245,
+              createdAt: new Date(),
+            },
+            {
+              id: 2,
+              pluginId: 1,
+              action: "publish",
+              input: { topic: "jarvis/test", message: "hello" },
+              output: { published: true },
+              status: "success",
+              duration: 89,
+              createdAt: new Date(),
+            },
+          ],
+          isSimulation: true,
+        };
+      }
+
+      try {
+        let query = db.select().from(pluginExecutions);
+        
+        if (input.pluginName) {
+          const pluginRecord = await db
+            .select()
+            .from(plugins)
+            .where(eq(plugins.name, input.pluginName))
+            .limit(1);
+
+          if (pluginRecord.length > 0) {
+            query = query.where(eq(pluginExecutions.pluginId, pluginRecord[0].id)) as any;
+          }
+        }
+
+        const results = await query
+          .orderBy(desc(pluginExecutions.createdAt))
+          .limit(input.limit);
+
+        return { executions: results, isSimulation: false };
+      } catch (error) {
+        console.error("Error fetching execution history:", error);
+        return { executions: [], isSimulation: false };
+      }
+    }),
 });

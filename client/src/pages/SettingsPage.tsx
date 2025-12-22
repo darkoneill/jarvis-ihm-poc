@@ -20,6 +20,7 @@ import {
   RotateCcw, 
   Save, 
   Settings, 
+  Sparkles,
   Sun, 
   Volume2,
   Monitor,
@@ -28,6 +29,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ThemeSelector } from "@/components/ThemeSelector";
 
 interface PreferencesState {
   theme: "light" | "dark" | "system";
@@ -44,6 +46,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { setTheme } = useTheme();
   const [hasChanges, setHasChanges] = useState(false);
+  const [themeSelectorOpen, setThemeSelectorOpen] = useState(false);
   const [localPrefs, setLocalPrefs] = useState<PreferencesState>({
     theme: "dark",
     language: "fr",
@@ -220,6 +223,25 @@ export default function SettingsPage() {
 
           <Separator />
 
+          {/* Visual Theme */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Thème visuel
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Choisissez un thème inspiré de la science-fiction
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => setThemeSelectorOpen(true)}>
+              <Palette className="h-4 w-4 mr-2" />
+              Choisir un thème
+            </Button>
+          </div>
+
+          <Separator />
+
           {/* Compact Mode */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -238,6 +260,12 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Theme Selector Dialog */}
+      <ThemeSelector
+        open={themeSelectorOpen}
+        onOpenChange={setThemeSelectorOpen}
+      />
 
       {/* Language */}
       <Card>

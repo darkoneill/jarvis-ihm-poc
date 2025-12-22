@@ -91,3 +91,15 @@
 - [x] 8 plugins disponibles (MQTT, Zigbee, Home Assistant, Telegram, etc.)
 - [x] Interface de gestion des plugins avec marketplace
 - [x] Tests unitaires (108 tests passés)
+
+## Phase 10 - Widgets Personnalisés, Plugins Actifs et Thèmes (COMPLETED)
+- [x] Widgets personnalisés avec requêtes API (5 types: api, chart, text, iframe, countdown)
+- [x] Éditeur de widget avec preview en temps réel
+- [x] Support des requêtes GET/POST avec headers et body
+- [x] Exécution des plugins MQTT (connexion broker)
+- [x] Exécution des plugins Home Assistant (API REST)
+- [x] Console d'exécution des plugins avec logs
+- [x] Système de thèmes visuels (6 thèmes: Jarvis, Iron Man, Matrix, Cyberpunk, Tron, Blade Runner)
+- [x] Sélecteur de thème dans les paramètres avec prévisualisation
+- [x] Effets visuels (glow, scanlines, particles)
+- [x] Tests unitaires (122 tests passés)
