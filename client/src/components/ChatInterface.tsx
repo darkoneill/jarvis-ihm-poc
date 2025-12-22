@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Bot, Mic, Paperclip, Send, User } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Bot, Loader2, Mic, Paperclip, RefreshCw, Send, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -25,28 +26,90 @@ export function ChatInterface() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId] = useState(() => `session-${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { isConnected, sendMessage } = useWebSocket("/ws/chat", {
-    onMessage: (data) => {
-      if (data.type === "chunk") {
-        // Streaming response
-        setMessages((prev) => {
-          const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === data.id) {
-            return prev.map(m => m.id === data.id ? { ...m, content: m.content + data.content } : m);
+  // tRPC mutation for sending messages
+  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
+    onSuccess: (data) => {
+      setIsTyping(false);
+      
+      if (data.success) {
+        // Simulate streaming effect for the response
+        const responseId = Date.now().toString();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: responseId,
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Stream the response character by character
+        let charIndex = 0;
+        const responseText = data.response;
+        
+        const interval = setInterval(() => {
+          if (charIndex < responseText.length) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === responseId
+                  ? { ...msg, content: responseText.substring(0, charIndex + 1) }
+                  : msg
+              )
+            );
+            charIndex++;
           } else {
-            return [...prev, { id: data.id, role: "assistant", content: data.content, timestamp: new Date() }];
+            clearInterval(interval);
           }
-        });
-        setIsTyping(false);
-      } else if (data.type === "full") {
-        // Full message
-        setMessages((prev) => [...prev, { id: data.id, role: "assistant", content: data.content, timestamp: new Date() }]);
-        setIsTyping(false);
+        }, 10); // Fast streaming effect
+      } else {
+        // Error response
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: data.response,
+            timestamp: new Date(),
+          },
+        ]);
+        if (data.error) {
+          toast.error("Erreur LLM", { description: data.error });
+        }
       }
     },
-    onOpen: () => console.log("Chat WebSocket connected"),
+    onError: (error) => {
+      setIsTyping(false);
+      toast.error("Erreur de communication", { description: error.message });
+      
+      // Add error message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Je suis désolé, une erreur s'est produite lors de la communication avec le serveur. Veuillez réessayer.",
+          timestamp: new Date(),
+        },
+      ]);
+    },
+  });
+
+  const clearHistoryMutation = trpc.chat.clearHistory.useMutation({
+    onSuccess: () => {
+      setMessages([
+        {
+          id: "1",
+          role: "assistant",
+          content: "Conversation réinitialisée. Comment puis-je vous aider ?",
+          timestamp: new Date(),
+        },
+      ]);
+      toast.success("Conversation effacée");
+    },
   });
 
   // Auto-scroll to bottom
@@ -60,7 +123,7 @@ export function ChatInterface() {
   }, [messages, isTyping]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isTyping) return;
 
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -73,42 +136,15 @@ export function ChatInterface() {
     setInputValue("");
     setIsTyping(true);
 
-    if (isConnected) {
-      sendMessage({ type: "message", content: inputValue });
-    } else {
-      // Fallback simulation if WS not connected (for PoC demo)
-      setTimeout(() => {
-        const responseId = (Date.now() + 1).toString();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: responseId,
-            role: "assistant",
-            content: "",
-            timestamp: new Date(),
-          },
-        ]);
+    // Send to LLM via tRPC
+    sendMessageMutation.mutate({
+      message: inputValue,
+      sessionId,
+    });
+  };
 
-        const responseText = "Mode Simulation (WebSocket déconnecté). Le backend Jarvis n'est pas détecté.\n\nVoici un exemple de code :\n```python\ndef hello_world():\n    print('Hello Jarvis')\n```";
-        let charIndex = 0;
-
-        const interval = setInterval(() => {
-          if (charIndex < responseText.length) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === responseId
-                  ? { ...msg, content: msg.content + responseText[charIndex] }
-                  : msg
-              )
-            );
-            charIndex++;
-          } else {
-            clearInterval(interval);
-            setIsTyping(false);
-          }
-        }, 20);
-      }, 1000);
-    }
+  const handleClearHistory = () => {
+    clearHistoryMutation.mutate({ sessionId });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -117,6 +153,8 @@ export function ChatInterface() {
       handleSendMessage();
     }
   };
+
+  const isConnected = !sendMessageMutation.isError;
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto bg-card/50 border border-border rounded-lg shadow-sm overflow-hidden backdrop-blur-sm">
@@ -130,12 +168,27 @@ export function ChatInterface() {
             <h2 className="font-semibold text-sm">Jarvis N2 Orchestrator</h2>
             <div className="flex items-center gap-1.5">
               <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-orange-500")}></span>
-              <span className="text-xs text-muted-foreground">{isConnected ? "Connected via WebSocket" : "Simulation Mode (Disconnected)"}</span>
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? "LLM API Connected" : "Connection Error"}
+              </span>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-           {/* Actions like Clear Chat, Settings could go here */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClearHistory}
+            disabled={clearHistoryMutation.isPending}
+            className="gap-2 text-muted-foreground"
+          >
+            {clearHistoryMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Effacer
+          </Button>
         </div>
       </div>
 

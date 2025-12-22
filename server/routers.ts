@@ -6,6 +6,8 @@ import { tasksRouter } from "./routes/tasks";
 import { scheduledJobsRouter } from "./routes/scheduledJobs";
 import { knowledgeRouter } from "./routes/knowledge";
 import { workflowsRouter } from "./routes/workflows";
+import { chatRouter } from "./routes/chat";
+import { hardwareRouter } from "./routes/hardware";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -26,6 +28,8 @@ export const appRouter = router({
   scheduledJobs: scheduledJobsRouter,
   knowledge: knowledgeRouter,
   workflows: workflowsRouter,
+  chat: chatRouter,
+  hardware: hardwareRouter,
 });
 
 export type AppRouter = typeof appRouter;

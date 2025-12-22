@@ -40,3 +40,9 @@
 ## Notes
 - Mode Simulation: Les composants affichent des données de fallback quand la DB est vide
 - Badge "Mode Simulation" visible sur chaque module quand pas de données réelles
+
+## Phase 5 - Nouvelles Fonctionnalités (COMPLETED)
+- [x] Intégration LLM Manus pour le chat (réponses réelles)
+- [x] Endpoint /api/hardware/metrics (CPU, GPU, RAM, etc.)
+- [x] Seed de données de test (tâches, jobs, documents)
+- [x] Tests unitaires pour chat et hardware routers (28 tests passés)

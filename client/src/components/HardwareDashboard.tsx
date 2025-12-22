@@ -4,12 +4,12 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Activity, Battery, Cpu, Database, HardDrive, Network, Server, Thermometer, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Activity, Battery, Cpu, Database, HardDrive, Loader2, Network, RefreshCw, Server, Thermometer, Zap } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useWebSocket } from "@/hooks/useWebSocket";
 import { toast } from "sonner";
-import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 // Types for Hardware Data
 interface NodeStats {
@@ -27,21 +27,88 @@ interface NetworkStats {
 }
 
 export function HardwareDashboard() {
-  // Simulated Data State
+  // State
   const [orchestrator, setOrchestrator] = useState<NodeStats>({ cpuUsage: 45, ramUsage: 32, gpuUsage: 12, temp: 65, power: 250 });
   const [reflex, setReflex] = useState<NodeStats>({ cpuUsage: 20, ramUsage: 15, gpuUsage: 5, temp: 42, power: 45 });
   const [networkHistory, setNetworkHistory] = useState<NetworkStats[]>([]);
   const [upsBattery, setUpsBattery] = useState(100);
+  const [latency, setLatency] = useState(0.4);
+  const [isLive, setIsLive] = useState(true);
   
   // Refs for alert throttling
   const lastTempAlert = useRef<number>(0);
   const lastUpsAlert = useRef<number>(0);
 
+  // tRPC queries with auto-refresh
+  const systemMetrics = trpc.hardware.getMetrics.useQuery(undefined, {
+    refetchInterval: isLive ? 3000 : false,
+  });
+  
+  const dgxMetrics = trpc.hardware.getDgxSparkMetrics.useQuery(undefined, {
+    refetchInterval: isLive ? 3000 : false,
+  });
+  
+  const jetsonMetrics = trpc.hardware.getJetsonThorMetrics.useQuery(undefined, {
+    refetchInterval: isLive ? 3000 : false,
+  });
+  
+  const infraMetrics = trpc.hardware.getInfrastructureMetrics.useQuery(undefined, {
+    refetchInterval: isLive ? 5000 : false,
+  });
+
+  // Update state from tRPC data
+  useEffect(() => {
+    if (dgxMetrics.data) {
+      const dgx = dgxMetrics.data;
+      setOrchestrator({
+        cpuUsage: dgx.cpu.usage,
+        ramUsage: dgx.memory.usagePercent,
+        gpuUsage: dgx.gpu.usage,
+        temp: dgx.cpu.temperature,
+        power: dgx.cpu.usage * 5 + 100, // Simulated power based on usage
+      });
+    }
+  }, [dgxMetrics.data]);
+
+  useEffect(() => {
+    if (jetsonMetrics.data) {
+      const jetson = jetsonMetrics.data;
+      setReflex({
+        cpuUsage: jetson.soc.usage,
+        ramUsage: jetson.memory.usagePercent,
+        gpuUsage: jetson.gpu.usage,
+        temp: jetson.soc.temperature,
+        power: jetson.soc.usage + 20,
+      });
+      setLatency(jetson.latency.reflexLoop / 1000); // Convert to ms
+    }
+  }, [jetsonMetrics.data]);
+
+  useEffect(() => {
+    if (infraMetrics.data) {
+      setUpsBattery(infraMetrics.data.ups.batteryPercent);
+    }
+  }, [infraMetrics.data]);
+
+  // Update network history
+  useEffect(() => {
+    if (systemMetrics.data) {
+      const net = systemMetrics.data.network;
+      setNetworkHistory(prev => {
+        const newPoint = {
+          timestamp: new Date().toLocaleTimeString(),
+          inbound: (net.rx / 1024 / 1024) % 100, // Convert to Mbps (simulated)
+          outbound: (net.tx / 1024 / 1024) % 50,
+        };
+        return [...prev.slice(-20), newPoint];
+      });
+    }
+  }, [systemMetrics.data]);
+
   const checkThresholds = (orchTemp: number, reflexTemp: number, ups: number) => {
     const now = Date.now();
-    const COOLDOWN = 60000; // 1 minute cooldown
+    const COOLDOWN = 60000;
 
-    // Check Temperature
     if ((orchTemp > 80 || reflexTemp > 80) && now - lastTempAlert.current > COOLDOWN) {
       toast.error("Alerte Surchauffe !", {
         description: `Température critique détectée : Orchestrator ${orchTemp.toFixed(1)}°C / Reflex ${reflexTemp.toFixed(1)}°C`,
@@ -50,7 +117,6 @@ export function HardwareDashboard() {
       lastTempAlert.current = now;
     }
 
-    // Check UPS
     if (ups < 20 && now - lastUpsAlert.current > COOLDOWN) {
       toast.warning("Batterie UPS Faible", {
         description: `Niveau de batterie critique : ${ups.toFixed(1)}%. Arrêt imminent recommandé.`,
@@ -60,67 +126,13 @@ export function HardwareDashboard() {
     }
   };
 
-  const { isConnected } = useWebSocket("/ws/hardware", {
-    onMessage: (data) => {
-      if (data.orchestrator) setOrchestrator(data.orchestrator);
-      if (data.reflex) setReflex(data.reflex);
-      if (data.upsBattery) setUpsBattery(data.upsBattery);
-      if (data.network) {
-        setNetworkHistory(prev => [...prev.slice(-20), data.network]);
-      }
-      
-      // Check thresholds on real data
-      if (data.orchestrator && data.reflex && data.upsBattery) {
-        checkThresholds(data.orchestrator.temp, data.reflex.temp, data.upsBattery);
-      }
-    }
-  });
-
-  // Simulation Loop (Fallback)
+  // Check thresholds when data changes
   useEffect(() => {
-    if (isConnected) return;
+    checkThresholds(orchestrator.temp, reflex.temp, upsBattery);
+  }, [orchestrator.temp, reflex.temp, upsBattery]);
 
-    const interval = setInterval(() => {
-      // Update Nodes
-      setOrchestrator(prev => ({
-        cpuUsage: Math.min(100, Math.max(0, prev.cpuUsage + (Math.random() * 10 - 5))),
-        ramUsage: Math.min(100, Math.max(0, prev.ramUsage + (Math.random() * 2 - 1))),
-        gpuUsage: Math.min(100, Math.max(0, prev.gpuUsage + (Math.random() * 20 - 10))),
-        temp: Math.min(90, Math.max(40, prev.temp + (Math.random() * 2 - 1))),
-        power: Math.min(500, Math.max(100, prev.power + (Math.random() * 50 - 25))),
-      }));
-
-      setReflex(prev => ({
-        cpuUsage: Math.min(100, Math.max(0, prev.cpuUsage + (Math.random() * 15 - 7))),
-        ramUsage: Math.min(100, Math.max(0, prev.ramUsage + (Math.random() * 5 - 2))),
-        gpuUsage: Math.min(100, Math.max(0, prev.gpuUsage + (Math.random() * 10 - 5))),
-        temp: Math.min(80, Math.max(35, prev.temp + (Math.random() * 3 - 1.5))),
-        power: Math.min(100, Math.max(20, prev.power + (Math.random() * 10 - 5))),
-      }));
-
-      // Update Network History
-      setNetworkHistory(prev => {
-        const newPoint = {
-          timestamp: new Date().toLocaleTimeString(),
-          inbound: Math.random() * 100, // Mbps
-          outbound: Math.random() * 50, // Mbps
-        };
-        return [...prev.slice(-20), newPoint];
-      });
-
-      // Simulate UPS discharge slightly
-      setUpsBattery(prev => {
-        const newVal = Math.max(15, prev - 0.05); // Faster discharge for testing alerts
-        return newVal;
-      });
-      
-      // Check thresholds on simulated data
-      checkThresholds(orchestrator.temp, reflex.temp, upsBattery);
-
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isConnected]);
+  const isLoading = systemMetrics.isLoading || dgxMetrics.isLoading || jetsonMetrics.isLoading;
+  const hasData = dgxMetrics.data || jetsonMetrics.data;
 
   const getStatusColor = (usage: number) => {
     if (usage > 90) return "text-red-500";
@@ -134,11 +146,67 @@ export function HardwareDashboard() {
     return "text-blue-500";
   };
 
+  const formatBytes = (bytes: number) => {
+    if (bytes >= 1024 * 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024 / 1024).toFixed(1)}T`;
+    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}G`;
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}M`;
+    return `${(bytes / 1024).toFixed(1)}K`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-6 p-2">
         
         {/* Top Bar: Global Status */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Monitoring Hardware</h2>
+            {hasData && (
+              <Badge variant="outline" className="text-green-500 border-green-500/30">
+                API Connectée
+              </Badge>
+            )}
+            {!hasData && (
+              <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
+                Mode Simulation
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsLive(!isLive)}
+              className={cn("gap-2", isLive && "text-green-500")}
+            >
+              <Activity className={cn("h-4 w-4", isLive && "animate-pulse")} />
+              {isLive ? "Live" : "Paused"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                systemMetrics.refetch();
+                dgxMetrics.refetch();
+                jetsonMetrics.refetch();
+                infraMetrics.refetch();
+              }}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-card/50 border-border/50">
             <CardContent className="p-4 flex items-center gap-4">
@@ -149,7 +217,6 @@ export function HardwareDashboard() {
                 <p className="text-xs text-muted-foreground font-medium">Santé Globale</p>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-green-500">OPTIMAL</h3>
-                  {!isConnected && <Badge variant="outline" className="text-[10px] h-4 px-1 border-orange-500/50 text-orange-500">SIM</Badge>}
                 </div>
               </div>
             </CardContent>
@@ -173,7 +240,7 @@ export function HardwareDashboard() {
                 <Battery className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">UPS (APC 1500VA)</p>
+                <p className="text-xs text-muted-foreground font-medium">UPS (APC 3000VA)</p>
                 <h3 className="text-lg font-bold font-mono">{upsBattery.toFixed(1)}%</h3>
               </div>
             </CardContent>
@@ -186,7 +253,7 @@ export function HardwareDashboard() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Latence N2-N0</p>
-                <h3 className="text-lg font-bold font-mono">0.4 ms</h3>
+                <h3 className="text-lg font-bold font-mono">{latency.toFixed(1)} ms</h3>
               </div>
             </CardContent>
           </Card>
@@ -216,7 +283,7 @@ export function HardwareDashboard() {
                   <Progress value={orchestrator.cpuUsage} className="h-1.5" />
                 </div>
                 <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">RAM (128G)</div>
+                  <div className="text-xs text-muted-foreground">RAM (1TB)</div>
                   <div className={cn("text-2xl font-bold font-mono", getStatusColor(orchestrator.ramUsage))}>
                     {orchestrator.ramUsage.toFixed(0)}%
                   </div>
@@ -247,10 +314,17 @@ export function HardwareDashboard() {
                     <HardDrive className="h-4 w-4" /> NVMe RAG
                   </div>
                   <span className="font-mono font-bold text-green-500">
-                    1.2T / 4T
+                    {dgxMetrics.data ? formatBytes(dgxMetrics.data.storage.nvme.used) : "1.2T"} / 15T
                   </span>
                 </div>
               </div>
+              
+              {dgxMetrics.data && (
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">GPU:</span> {dgxMetrics.data.gpu.count}x {dgxMetrics.data.gpu.model} • 
+                  <span className="font-medium ml-2">CPU:</span> {dgxMetrics.data.cpu.model}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -306,10 +380,17 @@ export function HardwareDashboard() {
                     <Activity className="h-4 w-4" /> Latence
                   </div>
                   <span className="font-mono font-bold text-green-500">
-                    42 ms
+                    {jetsonMetrics.data ? jetsonMetrics.data.latency.reflexLoop : 42} ms
                   </span>
                 </div>
               </div>
+              
+              {jetsonMetrics.data && (
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">SoC:</span> {jetsonMetrics.data.soc.model} • 
+                  <span className="font-medium ml-2">Camera:</span> {jetsonMetrics.data.camera.resolution} @ {jetsonMetrics.data.camera.fps}fps
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -359,10 +440,10 @@ export function HardwareDashboard() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">NVMe RAG (2To)</span>
-                  <span className="font-mono">45%</span>
+                  <span className="text-muted-foreground">NVMe RAG (15To)</span>
+                  <span className="font-mono">{infraMetrics.data?.storage?.nas?.usedPercent || 45}%</span>
                 </div>
-                <Progress value={45} className="h-2 bg-muted" />
+                <Progress value={infraMetrics.data?.storage?.nas?.usedPercent || 45} className="h-2 bg-muted" />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
@@ -373,14 +454,43 @@ export function HardwareDashboard() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Backup Externe</span>
-                  <span className="font-mono text-green-500">OK (Hier 03:00)</span>
+                  <span className="text-muted-foreground">NAS Backup</span>
+                  <span className="font-mono text-green-500">{infraMetrics.data?.storage?.nas?.raidStatus || "RAID 5 - OK"}</span>
                 </div>
                 <Progress value={100} className="h-2 bg-green-500/20" />
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* System Info */}
+        {systemMetrics.data && (
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Informations Système (Sandbox)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Hostname:</span>
+                  <span className="ml-2 font-mono">{systemMetrics.data.system.hostname}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">CPU:</span>
+                  <span className="ml-2 font-mono">{systemMetrics.data.system.cpuCount} cores</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">RAM:</span>
+                  <span className="ml-2 font-mono">{formatBytes(systemMetrics.data.memory.total)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Uptime:</span>
+                  <span className="ml-2 font-mono">{systemMetrics.data.system.uptime.formatted}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ScrollArea>
   );
