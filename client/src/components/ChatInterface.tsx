@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { Bot, Download, Loader2, Paperclip, RefreshCw, Send, User } from "lucide-react";
 import { useChatExport } from "./ExportButton";
 import { VoiceButton } from "./VoiceButton";
+import { useSubmitShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
@@ -125,6 +126,13 @@ export function ChatInterface() {
       }
     }
   }, [messages, isTyping]);
+
+  // Ctrl+Enter shortcut to send message
+  useSubmitShortcut(() => {
+    if (inputValue.trim() && !isTyping) {
+      handleSendMessage();
+    }
+  }, !isTyping);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;

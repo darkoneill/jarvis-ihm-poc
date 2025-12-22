@@ -9,6 +9,7 @@ import { workflowsRouter } from "./routes/workflows";
 import { chatRouter } from "./routes/chat";
 import { hardwareRouter } from "./routes/hardware";
 import { exportRouter } from "./routes/export";
+import { preferencesRouter } from "./routes/preferences";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -32,6 +33,7 @@ export const appRouter = router({
   chat: chatRouter,
   hardware: hardwareRouter,
   export: exportRouter,
+  preferences: preferencesRouter,
 });
 
 export type AppRouter = typeof appRouter;

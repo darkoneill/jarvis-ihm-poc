@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { NotificationCenter } from "./NotificationCenter";
 import { ExportButton } from "./ExportButton";
+import { ConnectionStatus } from "./ConnectionStatus";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
@@ -150,13 +151,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="h-4 w-4 mr-2" />
-                Profil
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <User className="h-4 w-4 mr-2" />
+                  Profil
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="h-4 w-4 mr-2" />
-                Paramètres
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Paramètres
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -204,13 +209,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
            <div className="flex items-center gap-3">
              <ExportButton size="sm" />
              <NotificationCenter />
-             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-               {isConnected ? (
-                 <Wifi className="h-3.5 w-3.5 text-green-500" />
-               ) : (
-                 <WifiOff className="h-3.5 w-3.5 text-red-500" />
-               )}
-             </div>
+             <ConnectionStatus />
              <div className="font-mono text-xs text-muted-foreground opacity-50">
                v5.9.0
              </div>

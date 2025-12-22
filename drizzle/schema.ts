@@ -99,3 +99,24 @@ export const workflows = mysqlTable("workflows", {
 
 export type Workflow = typeof workflows.$inferSelect;
 export type InsertWorkflow = typeof workflows.$inferInsert;
+
+/**
+ * User preferences table for storing user settings
+ */
+export const userPreferences = mysqlTable("user_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  theme: mysqlEnum("theme", ["light", "dark", "system"]).default("dark").notNull(),
+  language: varchar("language", { length: 10 }).default("fr").notNull(),
+  notificationsEnabled: boolean("notificationsEnabled").default(true).notNull(),
+  soundEnabled: boolean("soundEnabled").default(false).notNull(),
+  emailNotifications: boolean("emailNotifications").default(false).notNull(),
+  autoRefreshInterval: int("autoRefreshInterval").default(5000).notNull(),
+  compactMode: boolean("compactMode").default(false).notNull(),
+  keyboardShortcutsEnabled: boolean("keyboardShortcutsEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;

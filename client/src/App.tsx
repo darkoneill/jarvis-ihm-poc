@@ -6,6 +6,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { KeyboardShortcutsProvider } from "./contexts/KeyboardShortcutsContext";
 import { Loader2 } from "lucide-react";
 
 // Import components
@@ -17,6 +18,7 @@ import { CalendarView } from "./components/CalendarView";
 import { KnowledgeBase } from "./components/KnowledgeBase";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { DashboardLayout } from "./components/DashboardLayout";
+import SettingsPage from "./pages/SettingsPage";
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -95,6 +97,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SettingsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -106,10 +115,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" storageKey="jarvis-theme">
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <KeyboardShortcutsProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </KeyboardShortcutsProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

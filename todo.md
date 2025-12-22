@@ -68,3 +68,14 @@
 - [x] Transcription et envoi automatique au chat
 - [x] Menu utilisateur avec profil et déconnexion
 - [x] Tests unitaires (71 tests passés)
+
+## Phase 8 - Paramètres, Mode Hors-ligne et Raccourcis (COMPLETED)
+- [x] Page de paramètres utilisateur complète (/settings)
+- [x] Persistance des préférences en base de données (userPreferences table)
+- [x] Service Worker pour le mode hors-ligne (sw.js)
+- [x] Page hors-ligne avec détection automatique (offline.html)
+- [x] Raccourcis clavier globaux (Ctrl+K, Ctrl+1-6, Ctrl+Enter, Shift+?)
+- [x] Command Palette pour navigation rapide
+- [x] Indicateur de statut de connexion (ConnectionStatus)
+- [x] Dialogue d'aide pour les raccourcis clavier
+- [x] Tests unitaires (81 tests passés)

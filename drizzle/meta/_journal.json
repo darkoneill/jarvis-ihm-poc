@@ -15,6 +15,13 @@
       "when": 1766397072472,
       "tag": "0001_dear_mockingbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1766400227980,
+      "tag": "0002_salty_roulette",
+      "breakpoints": true
     }
   ]
 }

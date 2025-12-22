@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis - Hors ligne</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .icon svg {
+      width: 60px;
+      height: 60px;
+      stroke: #3b82f6;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+    
+    p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #a0a0a0;
+      margin-bottom: 30px;
+    }
+    
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: #ef4444;
+      margin-bottom: 30px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .button:hover {
+      background: #2563eb;
+    }
+    
+    .button svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .tips {
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      text-align: left;
+    }
+    
+    .tips h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    
+    .tips ul {
+      list-style: none;
+      font-size: 0.875rem;
+      color: #a0a0a0;
+    }
+    
+    .tips li {
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    
+    .tips li::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+      </svg>
+    </div>
+    
+    <h1>Connexion perdue</h1>
+    
+    <div class="status">
+      <span class="status-dot"></span>
+      Hors ligne
+    </div>
+    
+    <p>
+      Jarvis ne peut pas se connecter au serveur. 
+      Vérifiez votre connexion internet et réessayez.
+    </p>
+    
+    <button class="button" onclick="location.reload()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+      </svg>
+      Réessayer
+    </button>
+    
+    <div class="tips">
+      <h3>En attendant, vous pouvez :</h3>
+      <ul>
+        <li>Vérifier votre connexion Wi-Fi ou données mobiles</li>
+        <li>Redémarrer votre routeur si nécessaire</li>
+        <li>Consulter les données mises en cache localement</li>
+        <li>Attendre que la connexion soit rétablie</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // Check connection status periodically
+    setInterval(() => {
+      fetch('/api/health', { method: 'HEAD' })
+        .then(() => {
+          // Connection restored, reload page
+          location.reload();
+        })
+        .catch(() => {
+          // Still offline
+        });
+    }, 5000);
+    
+    // Listen for online event
+    window.addEventListener('online', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
