@@ -28,7 +28,16 @@ export interface StatusMessage {
   timestamp: string;
 }
 
-export type WSMessage = AlertMessage | MetricsMessage | StatusMessage;
+export interface ConversationTagMessage {
+  type: "conversation_tag";
+  conversationId: number;
+  tag: string;
+  title: string;
+  action: "added" | "removed";
+  timestamp: string;
+}
+
+export type WSMessage = AlertMessage | MetricsMessage | StatusMessage | ConversationTagMessage;
 
 // Store connected clients
 const clients = new Set<WebSocket>();
@@ -282,6 +291,56 @@ export function stopMonitoringSimulation() {
 // Get connected clients count
 export function getConnectedClientsCount(): number {
   return clients.size;
+}
+
+// Send notification for conversation tags (urgent, important)
+export function sendConversationTagNotification(
+  conversationId: number,
+  tag: string,
+  title: string,
+  action: "added" | "removed" = "added"
+) {
+  // Only send notifications for urgent/important tags
+  const notifiableTags = ["urgent", "important", "critique", "critical"];
+  
+  if (!notifiableTags.includes(tag.toLowerCase())) {
+    return;
+  }
+
+  // Broadcast tag notification
+  broadcast({
+    type: "conversation_tag",
+    conversationId,
+    tag,
+    title,
+    action,
+    timestamp: new Date().toISOString(),
+  } as ConversationTagMessage);
+
+  // Also send an alert for urgent/critical tags
+  if (tag.toLowerCase() === "urgent" || tag.toLowerCase() === "critique" || tag.toLowerCase() === "critical") {
+    sendAlert(
+      "warning",
+      "system",
+      action === "added" ? `🚨 Conversation Urgente` : `✅ Urgence Résolue`,
+      action === "added" 
+        ? `La conversation "${title}" a été marquée comme ${tag}`
+        : `Le tag ${tag} a été retiré de "${title}"`,
+      { conversationId, tag, action }
+    );
+  } else if (tag.toLowerCase() === "important") {
+    sendAlert(
+      "info",
+      "system",
+      action === "added" ? `⭐ Conversation Importante` : `Importance Retirée`,
+      action === "added"
+        ? `La conversation "${title}" a été marquée comme importante`
+        : `Le tag important a été retiré de "${title}"`,
+      { conversationId, tag, action }
+    );
+  }
+
+  console.log(`[WebSocket] Conversation tag notification: ${action} ${tag} on "${title}"`);
 }
 
 // Register for Redis task alerts

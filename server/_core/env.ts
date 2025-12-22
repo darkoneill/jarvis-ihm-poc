@@ -5,6 +5,10 @@ export const ENV = {
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
+  // Local Authentication (mode 100% local sans Manus OAuth)
+  localAuthEnabled: process.env.LOCAL_AUTH_ENABLED === "true",
+  localAdminUsername: process.env.LOCAL_ADMIN_USERNAME ?? "admin",
+  localAdminPassword: process.env.LOCAL_ADMIN_PASSWORD ?? "jarvis2024",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   // LLM Configuration

@@ -22,6 +22,8 @@ import { DashboardLayout } from "./components/DashboardLayout";
 import SettingsPage from "./pages/SettingsPage";
 import DashboardPage from "./pages/DashboardPage";
 import LLMSettingsPage from "./pages/LLMSettingsPage";
+import LocalLoginPage from "./pages/LocalLoginPage";
+import ConversationStatsPage from "./pages/ConversationStatsPage";
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -53,6 +55,9 @@ function Router() {
     <Switch>
       <Route path="/login">
         <LoginPage />
+      </Route>
+      <Route path="/login/local">
+        <LocalLoginPage />
       </Route>
       <Route path="/">
         <ProtectedRoute>
@@ -114,6 +119,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <DashboardPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/stats">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ConversationStatsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

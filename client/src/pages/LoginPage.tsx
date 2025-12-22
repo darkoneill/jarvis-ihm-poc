@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bot, Lock, Loader2 } from "lucide-react";
+import { Bot, Lock, Loader2, Server } from "lucide-react";
+import { Link } from "wouter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 
@@ -69,9 +70,19 @@ export default function LoginPage() {
               <span className="w-full border-t border-border/50" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Accès sécurisé</span>
+              <span className="bg-card px-2 text-muted-foreground">ou</span>
             </div>
           </div>
+
+          <Link href="/login/local">
+            <Button 
+              variant="outline" 
+              className="w-full gap-2 h-12 text-base border-dashed"
+            >
+              <Server className="h-5 w-5" />
+              Connexion Locale (100% Local)
+            </Button>
+          </Link>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4">

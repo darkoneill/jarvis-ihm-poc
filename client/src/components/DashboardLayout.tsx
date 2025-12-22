@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Activity,
+  BarChart3,
   Bot,
   Calendar,
   ChevronLeft,
@@ -59,6 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Cpu, label: "Hardware", href: "/hardware" },
     { icon: Calendar, label: "Calendrier", href: "/calendar" },
     { icon: Library, label: "Connaissances", href: "/knowledge" },
+    { icon: BarChart3, label: "Statistiques", href: "/stats" },
   ];
 
   // Get user initials for avatar

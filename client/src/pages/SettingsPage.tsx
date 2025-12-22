@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { 
+  Archive,
   Bell, 
   Bot,
   ChevronRight,
@@ -33,6 +34,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { AudioAlertSettings } from "@/components/AudioAlertSettings";
+import { AutoArchiveSettings } from "@/components/AutoArchiveSettings";
 import { Link } from "wouter";
 
 interface PreferencesState {
@@ -441,6 +443,9 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Auto-Archive Settings */}
+      <AutoArchiveSettings />
 
       {/* Audio Alerts */}
       <AudioAlertSettings />

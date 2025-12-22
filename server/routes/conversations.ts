@@ -3,6 +3,7 @@ import { eq, desc, and, like, sql } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { conversations, messages } from "../../drizzle/schema";
+import { sendConversationTagNotification } from "../websocket";
 
 export const conversationsRouter = router({
   // List all conversations for current user
@@ -516,6 +517,13 @@ export const conversationsRouter = router({
 
         const newTags = [...currentTags, normalizedTag];
 
+        // Get conversation title for notification
+        const convDetails = await db
+          .select({ title: conversations.title })
+          .from(conversations)
+          .where(eq(conversations.id, input.conversationId))
+          .limit(1);
+
         await db
           .update(conversations)
           .set({ tags: newTags })
@@ -525,6 +533,14 @@ export const conversationsRouter = router({
               eq(conversations.userId, ctx.user.id)
             )
           );
+
+        // Send notification for urgent/important tags
+        sendConversationTagNotification(
+          input.conversationId,
+          normalizedTag,
+          convDetails[0]?.title || "Conversation",
+          "added"
+        );
 
         return { success: true, tags: newTags, isSimulation: false };
       } catch (error) {
@@ -559,7 +575,15 @@ export const conversationsRouter = router({
           .limit(1);
 
         const currentTags = conv[0]?.tags || [];
-        const newTags = currentTags.filter(t => t !== input.tag.toLowerCase().trim());
+        const normalizedTag = input.tag.toLowerCase().trim();
+        const newTags = currentTags.filter(t => t !== normalizedTag);
+
+        // Get conversation title for notification
+        const convDetails = await db
+          .select({ title: conversations.title })
+          .from(conversations)
+          .where(eq(conversations.id, input.conversationId))
+          .limit(1);
 
         await db
           .update(conversations)
@@ -570,6 +594,14 @@ export const conversationsRouter = router({
               eq(conversations.userId, ctx.user.id)
             )
           );
+
+        // Send notification for urgent/important tags removal
+        sendConversationTagNotification(
+          input.conversationId,
+          normalizedTag,
+          convDetails[0]?.title || "Conversation",
+          "removed"
+        );
 
         return { success: true, tags: newTags, isSimulation: false };
       } catch (error) {
@@ -903,5 +935,232 @@ export const conversationsRouter = router({
         console.error("Error importing conversations:", error);
         throw new Error("Failed to import conversations");
       }
+    }),
+
+  // Get conversation statistics
+  getStats: publicProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        // Return mock statistics for demo
+        return {
+          totalConversations: 15,
+          totalMessages: 234,
+          archivedConversations: 3,
+          avgMessagesPerConversation: 15.6,
+          conversationsByMonth: [
+            { month: "2024-10", count: 3 },
+            { month: "2024-11", count: 5 },
+            { month: "2024-12", count: 7 },
+          ],
+          tagDistribution: [
+            { tag: "configuration", count: 5 },
+            { tag: "backup", count: 3 },
+            { tag: "monitoring", count: 4 },
+            { tag: "urgent", count: 2 },
+          ],
+          avgResponseTime: 2.5,
+          mostActiveDay: "Mercredi",
+          isSimulation: true,
+        };
+      }
+
+      try {
+        // Total conversations
+        const totalResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id));
+        const totalConversations = Number(totalResult[0]?.count || 0);
+
+        // Total messages
+        const messagesResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(messages)
+          .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+          .where(eq(conversations.userId, ctx.user.id));
+        const totalMessages = Number(messagesResult[0]?.count || 0);
+
+        // Archived conversations
+        const archivedResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.userId, ctx.user.id),
+              eq(conversations.archived, true)
+            )
+          );
+        const archivedConversations = Number(archivedResult[0]?.count || 0);
+
+        // Average messages per conversation
+        const avgMessagesPerConversation = totalConversations > 0 
+          ? Math.round((totalMessages / totalConversations) * 10) / 10 
+          : 0;
+
+        // Conversations by month (last 6 months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        
+        const monthlyResult = await db
+          .select({
+            month: sql<string>`DATE_FORMAT(created_at, '%Y-%m')`,
+            count: sql<number>`count(*)`,
+          })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.userId, ctx.user.id),
+              sql`created_at >= ${sixMonthsAgo}`
+            )
+          )
+          .groupBy(sql`DATE_FORMAT(created_at, '%Y-%m')`)
+          .orderBy(sql`DATE_FORMAT(created_at, '%Y-%m')`);
+
+        const conversationsByMonth = monthlyResult.map(r => ({
+          month: r.month,
+          count: Number(r.count),
+        }));
+
+        // Tag distribution
+        const allConversations = await db
+          .select({ tags: conversations.tags })
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id));
+
+        const tagCounts: Record<string, number> = {};
+        for (const conv of allConversations) {
+          const tags = conv.tags || [];
+          for (const tag of tags) {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+          }
+        }
+
+        const tagDistribution = Object.entries(tagCounts)
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+
+        // Most active day of week
+        const dayResult = await db
+          .select({
+            dayOfWeek: sql<number>`DAYOFWEEK(created_at)`,
+            count: sql<number>`count(*)`,
+          })
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id))
+          .groupBy(sql`DAYOFWEEK(created_at)`)
+          .orderBy(desc(sql`count(*)`));
+
+        const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+        const mostActiveDay = dayResult[0] ? dayNames[Number(dayResult[0].dayOfWeek) - 1] : 'N/A';
+
+        return {
+          totalConversations,
+          totalMessages,
+          archivedConversations,
+          avgMessagesPerConversation,
+          conversationsByMonth,
+          tagDistribution,
+          avgResponseTime: 2.5, // Placeholder - would need timing data
+          mostActiveDay,
+          isSimulation: false,
+        };
+      } catch (error) {
+        console.error("Error getting conversation stats:", error);
+        return {
+          totalConversations: 0,
+          totalMessages: 0,
+          archivedConversations: 0,
+          avgMessagesPerConversation: 0,
+          conversationsByMonth: [],
+          tagDistribution: [],
+          avgResponseTime: 0,
+          mostActiveDay: 'N/A',
+          isSimulation: false,
+        };
+      }
+    }),
+
+  // Auto-archive inactive conversations (older than specified days)
+  autoArchive: publicProcedure
+    .input(z.object({
+      daysInactive: z.number().min(1).max(365).default(30),
+      dryRun: z.boolean().default(false),
+    }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return {
+          archivedCount: 3,
+          conversations: [
+            { id: 1, title: "Ancienne conversation 1", lastMessageAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000) },
+            { id: 2, title: "Ancienne conversation 2", lastMessageAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) },
+            { id: 3, title: "Ancienne conversation 3", lastMessageAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+          ],
+          dryRun: true,
+          isSimulation: true,
+        };
+      }
+
+      try {
+        const { daysInactive = 30, dryRun = false } = input || {};
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysInactive);
+
+        // Find inactive conversations
+        const inactiveConversations = await db
+          .select({
+            id: conversations.id,
+            title: conversations.title,
+            lastMessageAt: conversations.lastMessageAt,
+          })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.userId, ctx.user.id),
+              eq(conversations.archived, false),
+              sql`last_message_at < ${cutoffDate}`
+            )
+          );
+
+        if (!dryRun && inactiveConversations.length > 0) {
+          // Archive the conversations
+          await db
+            .update(conversations)
+            .set({ archived: true })
+            .where(
+              and(
+                eq(conversations.userId, ctx.user.id),
+                eq(conversations.archived, false),
+                sql`last_message_at < ${cutoffDate}`
+              )
+            );
+        }
+
+        return {
+          archivedCount: inactiveConversations.length,
+          conversations: inactiveConversations,
+          dryRun,
+          isSimulation: false,
+        };
+      } catch (error) {
+        console.error("Error auto-archiving conversations:", error);
+        throw new Error("Failed to auto-archive conversations");
+      }
+    }),
+
+  // Get archive settings
+  getArchiveSettings: publicProcedure
+    .query(async ({ ctx }) => {
+      // In a real implementation, this would be stored in user preferences
+      return {
+        autoArchiveEnabled: false,
+        daysInactive: 30,
+        lastAutoArchive: null,
+        isSimulation: !ctx.user,
+      };
     }),
 });

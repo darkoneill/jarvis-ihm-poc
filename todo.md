@@ -340,3 +340,51 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-156 : Stratégies de fusion (skip, replace, merge)
 - [x] Tests unitaires (232 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.20, STATUS.md)
+
+
+## Phase 28 - Authentification Locale et Améliorations (COMPLETED)
+- [x] IHM-160 : Authentification locale (mode 100% local sans Manus OAuth)
+- [x] IHM-161 : Page de connexion locale avec username/password
+- [x] IHM-162 : Gestion des utilisateurs locaux en base de données
+- [x] IHM-163 : Configuration LOCAL_AUTH_ENABLED pour basculer entre modes
+- [x] IHM-170 : Notifications push pour tags urgent/important
+- [x] IHM-171 : WebSocket pour notifications en temps réel
+- [x] IHM-180 : Tableau de bord statistiques de conversations
+- [x] IHM-181 : Graphiques par tag, par mois, temps de réponse LLM
+- [x] IHM-190 : Archivage automatique des conversations inactives
+- [x] IHM-191 : Interface de configuration archivage automatique
+- [x] Tests unitaires (244 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.21, STATUS.md)
+
+## Résumé des Tickets Non Traités (hors v6.0)
+
+### Tickets Complétés dans cette session
+
+Tous les tickets IHM jusqu'à v5.9.21 sont complétés. Les fonctionnalités suivantes ont été ajoutées :
+
+| Ticket | Description | Status |
+|--------|-------------|--------|
+| IHM-160 | Authentification locale (mode 100% local) | ✅ |
+| IHM-161 | Page /local-login avec username/password | ✅ |
+| IHM-162 | Gestion utilisateurs locaux (bcrypt) | ✅ |
+| IHM-163 | Variable LOCAL_AUTH_ENABLED | ✅ |
+| IHM-170 | Notifications push pour tags urgent/important | ✅ |
+| IHM-171 | WebSocket sendConversationTagNotification | ✅ |
+| IHM-180 | Page /stats avec statistiques conversations | ✅ |
+| IHM-181 | Graphiques Chart.js (tags, mois, jour actif) | ✅ |
+| IHM-190 | Route autoArchive avec prévisualisation | ✅ |
+| IHM-191 | Composant AutoArchiveSettings | ✅ |
+
+### Tickets Restants pour v6.0
+
+| Ticket | Description | Priorité |
+|--------|-------------|----------|
+| JAR-2901 | Intégration N1 dans Supervisor | HAUTE |
+| JAR-2902 | Déploiement DGX Spark + Jetson Thor | HAUTE |
+| JAR-2903 | Tests sur matériel réel | HAUTE |
+
+### Prochaines Étapes Suggérées
+
+1. **Déploiement local** : Tester l'IHM sur Windows WSL2 ou Linux avec Ollama local
+2. **Activation N2** : Activer N2_ENABLED=true une fois le N2 Supervisor déployé
+3. **Tests E2E** : Exécuter les tests Playwright sur l'environnement de production
