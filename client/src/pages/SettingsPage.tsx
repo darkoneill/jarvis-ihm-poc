@@ -30,6 +30,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { AudioAlertSettings } from "@/components/AudioAlertSettings";
 
 interface PreferencesState {
   theme: "light" | "dark" | "system";
@@ -410,6 +411,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Audio Alerts */}
+      <AudioAlertSettings />
 
       {/* Keyboard Shortcuts */}
       <Card>

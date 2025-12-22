@@ -36,6 +36,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { ContextualAssistant } from "./ContextualAssistant";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -43,6 +44,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isAssistantMinimized, setIsAssistantMinimized] = useState(false);
   const [location] = useLocation();
   const { isConnected } = useWebSocket("/ws", { showToasts: false });
   const { user, logout } = useAuth();
@@ -224,6 +226,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex-1 overflow-auto p-6">
           {children}
         </div>
+
+        {/* Contextual Assistant */}
+        <ContextualAssistant
+          currentPage={location}
+          isMinimized={isAssistantMinimized}
+          onToggleMinimize={() => setIsAssistantMinimized(!isAssistantMinimized)}
+        />
       </main>
     </div>
   );

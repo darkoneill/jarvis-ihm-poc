@@ -29,8 +29,9 @@ import { DraggableWidget } from "@/components/dashboard/DraggableWidget";
 import { renderWidget } from "@/components/dashboard/widgets";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { LayoutGrid, Plus, RotateCcw, Save, Settings2, Wand2 } from "lucide-react";
+import { LayoutGrid, Plus, RotateCcw, Save, Settings2, Wand2, Presentation } from "lucide-react";
 import { CustomWidgetEditor } from "@/components/CustomWidgetEditor";
+import { PresentationMode } from "@/components/PresentationMode";
 
 type WidgetType = 
   | "system_status"
@@ -58,6 +59,7 @@ export default function DashboardPage() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [customWidgetEditorOpen, setCustomWidgetEditorOpen] = useState(false);
+  const [presentationModeOpen, setPresentationModeOpen] = useState(false);
 
   const { data: config, isLoading } = trpc.dashboard.getConfig.useQuery();
   const { data: widgetTypes } = trpc.dashboard.getWidgetTypes.useQuery();
@@ -222,6 +224,16 @@ export default function DashboardPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Presentation Mode */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPresentationModeOpen(true)}
+          >
+            <Presentation className="h-4 w-4 mr-2" />
+            Présentation
+          </Button>
+
           {/* Reset */}
           <Button
             variant="outline"
@@ -302,6 +314,12 @@ export default function DashboardPage() {
         onSave={() => {
           toast.success("Widget personnalisé créé");
         }}
+      />
+
+      {/* Presentation Mode */}
+      <PresentationMode
+        isOpen={presentationModeOpen}
+        onClose={() => setPresentationModeOpen(false)}
       />
     </div>
   );

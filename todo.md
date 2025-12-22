@@ -103,3 +103,16 @@
 - [x] Sélecteur de thème dans les paramètres avec prévisualisation
 - [x] Effets visuels (glow, scanlines, particles)
 - [x] Tests unitaires (122 tests passés)
+
+## Phase 11 - Alertes Sonores, Mode Présentation et Assistant (COMPLETED)
+- [x] Alertes sonores pour notifications critiques (8 types d'alertes)
+- [x] Sons personnalisables (GPU, UPS, réseau, tâches, messages, erreurs)
+- [x] Contrôle du volume des alertes (0-100%)
+- [x] Configuration individuelle par type d'alerte
+- [x] Mode présentation plein écran (F pour fullscreen)
+- [x] Rotation automatique des widgets (5-60s configurable)
+- [x] Contrôles de présentation (pause, suivant, précédent, clavier)
+- [x] Assistant contextuel intelligent (suggestions en bas à droite)
+- [x] Suggestions basées sur le contexte (page, message, heure)
+- [x] Actions rapides depuis les suggestions
+- [x] Tests unitaires (146 tests passés)

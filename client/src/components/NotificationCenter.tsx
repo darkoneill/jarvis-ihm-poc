@@ -6,13 +6,55 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useWebSocket, AlertMessage } from "@/hooks/useWebSocket";
 import { AlertCircle, AlertTriangle, Bell, CheckCircle, Info, Trash2, Wifi, WifiOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useAudioAlerts, AlertType } from "@/hooks/useAudioAlerts";
 
 export function NotificationCenter() {
   const { isConnected, alerts, clearAlerts } = useWebSocket("/ws", {
     showToasts: true,
   });
   const [isOpen, setIsOpen] = useState(false);
+  const { playAlert, initAudioContext } = useAudioAlerts();
+  const lastAlertCountRef = useRef(0);
+
+  // Play sound when new alerts arrive
+  useEffect(() => {
+    if (alerts.length > lastAlertCountRef.current) {
+      const newAlerts = alerts.slice(0, alerts.length - lastAlertCountRef.current);
+      newAlerts.forEach((alert) => {
+        // Map alert type to sound
+        let soundType: AlertType | null = null;
+        const message = alert.message.toLowerCase();
+        
+        if (message.includes("gpu") && alert.severity === "critical") {
+          soundType = "gpu_critical";
+        } else if (message.includes("gpu") && alert.severity === "warning") {
+          soundType = "gpu_warning";
+        } else if (message.includes("ups") && alert.severity === "critical") {
+          soundType = "ups_critical";
+        } else if (message.includes("ups") && alert.severity === "warning") {
+          soundType = "ups_warning";
+        } else if (message.includes("réseau") || message.includes("network")) {
+          soundType = "network_down";
+        } else if (alert.severity === "critical") {
+          soundType = "system_error";
+        }
+        
+        if (soundType) {
+          playAlert(soundType);
+        }
+      });
+    }
+    lastAlertCountRef.current = alerts.length;
+  }, [alerts, playAlert]);
+
+  // Initialize audio context on first interaction
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      initAudioContext();
+    }
+    setIsOpen(open);
+  };
 
   const unreadCount = alerts.length;
   const criticalCount = alerts.filter(a => a.severity === "critical").length;
@@ -49,7 +91,7 @@ export function NotificationCenter() {
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className={cn("h-5 w-5", criticalCount > 0 && "text-red-500")} />
