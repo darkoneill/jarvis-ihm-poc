@@ -26,7 +26,8 @@ export function useWebSocket(url: string, options: WebSocketOptions = {}) {
   const connect = () => {
     // In development, we might want to proxy or use a full URL
     // For this PoC, we assume relative path works via Vite proxy or absolute URL
-    const wsUrl = url.startsWith("ws") ? url : `ws://${window.location.host}${url}`;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = url.startsWith("ws") ? url : `${protocol}//${window.location.host}${url}`;
     
     // NOTE: For the PoC environment where backend might not be running, 
     // we will fail gracefully but keep the structure ready.

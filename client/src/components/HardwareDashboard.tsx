@@ -8,6 +8,8 @@ import { Activity, Battery, Cpu, Database, HardDrive, Network, Server, Thermomet
 import { useEffect, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { toast } from "sonner";
+import { useRef } from "react";
 
 // Types for Hardware Data
 interface NodeStats {
@@ -30,6 +32,33 @@ export function HardwareDashboard() {
   const [reflex, setReflex] = useState<NodeStats>({ cpuUsage: 20, ramUsage: 15, gpuUsage: 5, temp: 42, power: 45 });
   const [networkHistory, setNetworkHistory] = useState<NetworkStats[]>([]);
   const [upsBattery, setUpsBattery] = useState(100);
+  
+  // Refs for alert throttling
+  const lastTempAlert = useRef<number>(0);
+  const lastUpsAlert = useRef<number>(0);
+
+  const checkThresholds = (orchTemp: number, reflexTemp: number, ups: number) => {
+    const now = Date.now();
+    const COOLDOWN = 60000; // 1 minute cooldown
+
+    // Check Temperature
+    if ((orchTemp > 80 || reflexTemp > 80) && now - lastTempAlert.current > COOLDOWN) {
+      toast.error("Alerte Surchauffe !", {
+        description: `Température critique détectée : Orchestrator ${orchTemp.toFixed(1)}°C / Reflex ${reflexTemp.toFixed(1)}°C`,
+        duration: 5000,
+      });
+      lastTempAlert.current = now;
+    }
+
+    // Check UPS
+    if (ups < 20 && now - lastUpsAlert.current > COOLDOWN) {
+      toast.warning("Batterie UPS Faible", {
+        description: `Niveau de batterie critique : ${ups.toFixed(1)}%. Arrêt imminent recommandé.`,
+        duration: 8000,
+      });
+      lastUpsAlert.current = now;
+    }
+  };
 
   const { isConnected } = useWebSocket("/ws/hardware", {
     onMessage: (data) => {
@@ -38,6 +67,11 @@ export function HardwareDashboard() {
       if (data.upsBattery) setUpsBattery(data.upsBattery);
       if (data.network) {
         setNetworkHistory(prev => [...prev.slice(-20), data.network]);
+      }
+      
+      // Check thresholds on real data
+      if (data.orchestrator && data.reflex && data.upsBattery) {
+        checkThresholds(data.orchestrator.temp, data.reflex.temp, data.upsBattery);
       }
     }
   });
@@ -75,7 +109,13 @@ export function HardwareDashboard() {
       });
 
       // Simulate UPS discharge slightly
-      setUpsBattery(prev => Math.max(98, prev - 0.01));
+      setUpsBattery(prev => {
+        const newVal = Math.max(15, prev - 0.05); // Faster discharge for testing alerts
+        return newVal;
+      });
+      
+      // Check thresholds on simulated data
+      checkThresholds(orchestrator.temp, reflex.temp, upsBattery);
 
     }, 1000);
 
