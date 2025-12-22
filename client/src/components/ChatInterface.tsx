@@ -3,8 +3,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { Bot, Download, Loader2, Mic, Paperclip, RefreshCw, Send, User } from "lucide-react";
+import { Bot, Download, Loader2, Paperclip, RefreshCw, Send, User } from "lucide-react";
 import { useChatExport } from "./ExportButton";
+import { VoiceButton } from "./VoiceButton";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
@@ -300,9 +301,13 @@ export function ChatInterface() {
           />
 
           <div className="flex gap-1 flex-shrink-0 mb-0.5">
-             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-               <Mic className="h-4 w-4" />
-             </Button>
+             <VoiceButton
+               onTranscript={(text) => {
+                 setInputValue(prev => prev ? `${prev} ${text}` : text);
+               }}
+               disabled={isTyping}
+               className="h-8 w-8"
+             />
              <Button 
                size="icon" 
                className="h-8 w-8" 

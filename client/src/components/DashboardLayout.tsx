@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -12,7 +20,9 @@ import {
   FileText,
   LayoutDashboard,
   Library,
+  LogOut,
   Settings,
+  User,
   Workflow,
   Wifi,
   WifiOff
@@ -20,6 +30,7 @@ import {
 import { NotificationCenter } from "./NotificationCenter";
 import { ExportButton } from "./ExportButton";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -31,6 +42,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [location] = useLocation();
   const { isConnected } = useWebSocket("/ws", { showToasts: false });
+  const { user, logout } = useAuth();
 
   const navItems = [
     { icon: Bot, label: "Dialogue", href: "/" },
@@ -41,6 +53,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Library, label: "Connaissances", href: "/knowledge" },
     { icon: Workflow, label: "Workflows", href: "/workflows" },
   ];
+
+  // Get user initials for avatar
+  const getInitials = (name: string | null) => {
+    if (!name) return "U";
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
@@ -94,10 +112,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
         </ScrollArea>
 
-        {/* Footer / Settings */}
+        {/* User Profile / Settings */}
         <div className="p-2 border-t border-border">
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 className={cn(
@@ -105,12 +123,51 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   isCollapsed ? "justify-center px-2" : "px-4"
                 )}
               >
-                <Settings className="h-5 w-5 text-muted-foreground" />
-                {!isCollapsed && <span>Paramètres</span>}
+                <Avatar className="h-6 w-6">
+                  <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                    {getInitials(user?.name || null)}
+                  </AvatarFallback>
+                </Avatar>
+                {!isCollapsed && (
+                  <div className="flex flex-col items-start text-left">
+                    <span className="text-sm font-medium truncate max-w-[140px]">
+                      {user?.name || "Utilisateur"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                      {user?.email || ""}
+                    </span>
+                  </div>
+                )}
               </Button>
-            </TooltipTrigger>
-            {isCollapsed && <TooltipContent side="right">Paramètres</TooltipContent>}
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>{user?.name || "Utilisateur"}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {user?.email || ""}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="h-4 w-4 mr-2" />
+                Profil
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="h-4 w-4 mr-2" />
+                Paramètres
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive focus:text-destructive"
+                onClick={() => logout()}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Collapse Toggle */}
@@ -132,7 +189,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background/50 backdrop-blur-sm">
-        {/* Header (Optional, can be breadcrumbs or page title) */}
+        {/* Header */}
         <header className="h-[60px] border-b border-border flex items-center px-6 justify-between bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
            <div className="flex items-center gap-2 text-sm text-muted-foreground">
              <span className="font-mono text-xs uppercase tracking-wider text-primary/70">System Status:</span>
@@ -155,7 +212,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                )}
              </div>
              <div className="font-mono text-xs text-muted-foreground opacity-50">
-               v5.9.0-alpha
+               v5.9.0
              </div>
            </div>
         </header>

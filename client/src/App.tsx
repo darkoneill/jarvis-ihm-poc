@@ -1,9 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import LoginPage from "@/pages/LoginPage";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 // Import components
 import { ChatInterface } from "./components/ChatInterface";
@@ -15,43 +18,82 @@ import { KnowledgeBase } from "./components/KnowledgeBase";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { DashboardLayout } from "./components/DashboardLayout";
 
+// Protected Route wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Chargement...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
+      <Route path="/login">
+        <LoginPage />
+      </Route>
       <Route path="/">
-        <DashboardLayout>
-          <ChatInterface />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ChatInterface />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/logs">
-        <DashboardLayout>
-          <LogViewer />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <LogViewer />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/tasks">
-        <DashboardLayout>
-          <TaskBoard />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <TaskBoard />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/hardware">
-        <DashboardLayout>
-          <HardwareDashboard />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <HardwareDashboard />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/calendar">
-        <DashboardLayout>
-          <CalendarView />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <CalendarView />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/knowledge">
-        <DashboardLayout>
-          <KnowledgeBase />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <KnowledgeBase />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/workflows">
-        <DashboardLayout>
-          <WorkflowEditor />
-        </DashboardLayout>
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WorkflowEditor />
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
@@ -63,10 +105,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" storageKey="jarvis-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

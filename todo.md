@@ -56,3 +56,15 @@
 - [x] Export PDF/HTML des rapports de performance
 - [x] Export PDF/HTML de l'historique des conversations
 - [x] Tests unitaires (63 tests passés)
+
+## Phase 7 - Authentification et UX Avancée (COMPLETED)
+- [x] Authentification OAuth Manus (intégrée avec tRPC)
+- [x] Page de login avec redirection OAuth
+- [x] Protection des routes authentifiées (ProtectedRoute component)
+- [x] Préférences utilisateur (thème, notifications, langue)
+- [x] Graphiques Chart.js temps réel (CPU, GPU, RAM, Température)
+- [x] Historique des métriques avec rafraîchissement automatique
+- [x] Commandes vocales Web Speech API (français)
+- [x] Transcription et envoi automatique au chat
+- [x] Menu utilisateur avec profil et déconnexion
+- [x] Tests unitaires (71 tests passés)

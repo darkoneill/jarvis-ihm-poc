@@ -1,66 +1,139 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
+  id: number;
+  openId: string;
+  name: string | null;
+  email: string | null;
   role: "admin" | "user";
+  loginMethod: string | null;
+  createdAt: Date;
+  lastSignedIn: Date;
+}
+
+interface UserPreferences {
+  theme: "light" | "dark" | "system";
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+  language: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  preferences: UserPreferences;
+  login: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  updatePreferences: (prefs: Partial<UserPreferences>) => void;
 }
+
+const defaultPreferences: UserPreferences = {
+  theme: "dark",
+  notificationsEnabled: true,
+  soundEnabled: false,
+  language: "fr",
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Get OAuth login URL
+function getLoginUrl(): string {
+  const appId = import.meta.env.VITE_APP_ID || "";
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL || "https://manus.im/oauth";
+  const callbackUrl = `${window.location.origin}/api/oauth/callback`;
+  
+  // Generate a random state for CSRF protection
+  const state = Math.random().toString(36).substring(2, 15);
+  sessionStorage.setItem("oauth_state", state);
+  
+  return `${oauthPortalUrl}?app_id=${appId}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${state}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
   const [isLoading, setIsLoading] = useState(true);
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
-  // Check for persisted session on mount
+  // tRPC query for current user
+  const { data: userData, isLoading: isUserLoading, refetch } = trpc.auth.me.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // tRPC mutation for logout
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      setUser(null);
+      localStorage.removeItem("jarvis_preferences");
+      setLocation("/login");
+    },
+  });
+
+  // Load preferences from localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem("jarvis_user");
-    if (storedUser) {
+    const storedPrefs = localStorage.getItem("jarvis_preferences");
+    if (storedPrefs) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedPrefs);
+        setPreferences({ ...defaultPreferences, ...parsed });
       } catch (e) {
-        console.error("Failed to parse stored user", e);
-        localStorage.removeItem("jarvis_user");
+        console.error("Failed to parse stored preferences", e);
       }
     }
-    setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication
-    if (email === "admin@jarvis.ai" && password === "jarvis") {
-      const mockUser: User = {
-        id: "1",
-        name: "Admin Jarvis",
-        email,
-        role: "admin",
-      };
-      setUser(mockUser);
-      localStorage.setItem("jarvis_user", JSON.stringify(mockUser));
-      return true;
+  // Update user when data changes
+  useEffect(() => {
+    if (userData) {
+      setUser({
+        id: userData.id,
+        openId: userData.openId,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role as "admin" | "user",
+        loginMethod: userData.loginMethod,
+        createdAt: new Date(userData.createdAt),
+        lastSignedIn: new Date(userData.lastSignedIn),
+      });
+    } else {
+      setUser(null);
     }
-    return false;
-  };
+    setIsLoading(isUserLoading);
+  }, [userData, isUserLoading]);
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("jarvis_user");
-    setLocation("/login");
-  };
+  const login = useCallback(() => {
+    // Redirect to OAuth login
+    window.location.href = getLoginUrl();
+  }, []);
+
+  const logout = useCallback(async () => {
+    await logoutMutation.mutateAsync();
+  }, [logoutMutation]);
+
+  const updatePreferences = useCallback((prefs: Partial<UserPreferences>) => {
+    setPreferences(prev => {
+      const updated = { ...prev, ...prefs };
+      localStorage.setItem("jarvis_preferences", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        preferences,
+        login, 
+        logout, 
+        isAuthenticated: !!user, 
+        isLoading,
+        updatePreferences,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

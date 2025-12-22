@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { Activity, Battery, Cpu, Database, HardDrive, Loader2, Network, RefreshCw, Server, Thermometer, Zap } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { HardwareCharts } from "./HardwareCharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -461,6 +462,15 @@ export function HardwareDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Real-time Charts */}
+        <div className="mt-6">
+          <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Graphiques Temps Réel (Historique)
+          </h3>
+          <HardwareCharts refreshInterval={isLive ? 5000 : 0} />
         </div>
 
         {/* System Info */}
