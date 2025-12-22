@@ -286,3 +286,13 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-115 : Raccourci clavier Ctrl+L pour config LLM
 - [x] Tests unitaires (200 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.15, STATUS.md)
+
+
+## Phase 23 - Streaming SSE et Historique Persistant (COMPLETED)
+- [x] IHM-116 : Schéma DB pour historique des conversations (déjà existant)
+- [x] IHM-117 : Routes tRPC pour CRUD conversations (déjà existant)
+- [x] IHM-118 : Streaming SSE pour réponses LLM (llmStreaming.ts)
+- [x] IHM-119 : Frontend streaming avec affichage temps réel (useChatStream.ts)
+- [x] IHM-120 : Endpoint /api/chat/stream avec sauvegarde automatique
+- [x] Tests unitaires (219 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.16, STATUS.md)

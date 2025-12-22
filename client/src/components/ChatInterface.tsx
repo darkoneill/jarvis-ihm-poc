@@ -8,6 +8,7 @@ import { useChatExport } from "./ExportButton";
 import { VoiceButton } from "./VoiceButton";
 import { ConversationHistory } from "./ConversationHistory";
 import { useSubmitShortcut } from "@/hooks/useKeyboardShortcuts";
+import { useChatStream } from "@/hooks/useChatStream";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
@@ -31,7 +32,43 @@ export function ChatInterface() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [sessionId] = useState(() => `session-${Date.now()}`);
+  const [useStreaming, setUseStreaming] = useState(true);
+  const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Streaming hook
+  const { streamMessage, isStreaming, abortStream } = useChatStream({
+    onStart: () => {
+      setIsTyping(true);
+    },
+    onContent: (content) => {
+      // Update the current streaming message
+      if (currentStreamId) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === currentStreamId
+              ? { ...msg, content: msg.content + content }
+              : msg
+          )
+        );
+      }
+    },
+    onDone: (usage) => {
+      setIsTyping(false);
+      setCurrentStreamId(null);
+      if (usage) {
+        console.log(`[Chat] Tokens used: ${usage.total_tokens}`);
+      }
+    },
+    onError: (error) => {
+      setIsTyping(false);
+      setCurrentStreamId(null);
+      toast.error("Erreur de streaming", { description: error });
+    },
+    onInfo: (provider, model) => {
+      console.log(`[Chat] Using provider: ${provider}, model: ${model}`);
+    },
+  });
 
   // tRPC mutation for sending messages
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
@@ -160,22 +197,49 @@ export function ChatInterface() {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isTyping) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: inputValue,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, userMessage]);
+    const messageToSend = inputValue;
     setInputValue("");
-    setIsTyping(true);
 
-    // Send to LLM via tRPC
-    sendMessageMutation.mutate({
-      message: inputValue,
-      sessionId,
-    });
+    // Check if streaming is enabled in LLM config
+    const streamEnabled = llmConfig?.streamEnabled !== false && useStreaming;
+
+    if (streamEnabled) {
+      // Use streaming SSE
+      const responseId = `stream-${Date.now()}`;
+      setCurrentStreamId(responseId);
+      
+      // Add empty assistant message that will be filled by streaming
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: responseId,
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+        },
+      ]);
+
+      try {
+        await streamMessage(messageToSend);
+      } catch (error) {
+        // Error already handled in onError callback
+      }
+    } else {
+      // Use traditional tRPC mutation
+      setIsTyping(true);
+      sendMessageMutation.mutate({
+        message: messageToSend,
+        sessionId,
+      });
+    }
   };
 
   const handleClearHistory = () => {
