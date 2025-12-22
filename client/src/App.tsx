@@ -1,47 +1,60 @@
-import { ChatInterface } from "@/components/ChatInterface";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { LogViewer } from "@/components/LogViewer";
-import { TaskBoard } from "@/components/TaskBoard";
-import { HardwareDashboard } from "@/components/HardwareDashboard";
-import { CalendarView } from "@/components/CalendarView";
-import { KnowledgeBase } from "@/components/KnowledgeBase";
-import { WorkflowEditor } from "@/components/WorkflowEditor";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
-import { AuthProvider } from "@/contexts/AuthContext";
-import LoginPage from "@/pages/LoginPage";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
-// Placeholder components for other routes
-// const TasksPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Tâches (En développement)</div>;
-// const CalendarPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Calendrier (En développement)</div>;
-// const KnowledgePlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Connaissances (En développement)</div>;
-// const WorkflowsPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Workflows (En développement)</div>;
-const NotFound = () => <div className="p-4 text-center text-muted-foreground">404 - Page non trouvée</div>;
+// Import components
+import { ChatInterface } from "./components/ChatInterface";
+import { LogViewer } from "./components/LogViewer";
+import { TaskBoard } from "./components/TaskBoard";
+import { HardwareDashboard } from "./components/HardwareDashboard";
+import { CalendarView } from "./components/CalendarView";
+import { KnowledgeBase } from "./components/KnowledgeBase";
+import { WorkflowEditor } from "./components/WorkflowEditor";
+import { DashboardLayout } from "./components/DashboardLayout";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={LoginPage} />
-      <Route path="/:rest*">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Switch>
-              <Route path="/" component={ChatInterface} />
-              <Route path="/logs" component={LogViewer} />
-              <Route path="/tasks" component={TaskBoard} />
-              <Route path="/hardware" component={HardwareDashboard} />
-              <Route path="/calendar" component={CalendarView} />
-              <Route path="/knowledge" component={KnowledgeBase} />
-              <Route path="/workflows" component={WorkflowEditor} />
-              <Route component={NotFound} />
-            </Switch>
-          </DashboardLayout>
-        </ProtectedRoute>
+      <Route path="/">
+        <DashboardLayout>
+          <ChatInterface />
+        </DashboardLayout>
       </Route>
+      <Route path="/logs">
+        <DashboardLayout>
+          <LogViewer />
+        </DashboardLayout>
+      </Route>
+      <Route path="/tasks">
+        <DashboardLayout>
+          <TaskBoard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/hardware">
+        <DashboardLayout>
+          <HardwareDashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/calendar">
+        <DashboardLayout>
+          <CalendarView />
+        </DashboardLayout>
+      </Route>
+      <Route path="/knowledge">
+        <DashboardLayout>
+          <KnowledgeBase />
+        </DashboardLayout>
+      </Route>
+      <Route path="/workflows">
+        <DashboardLayout>
+          <WorkflowEditor />
+        </DashboardLayout>
+      </Route>
+      <Route path="/404" component={NotFound} />
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -49,18 +62,14 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ThemeProvider
-          defaultTheme="dark"
-          // storageKey="jarvis-theme"
-        >
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="jarvis-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
+
 export default App;

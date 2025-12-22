@@ -1,14 +1,19 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Background, Controls, ReactFlow, useEdgesState, useNodesState, addEdge, Connection, Edge, MarkerType } from "@xyflow/react";
+import { trpc } from "@/lib/trpc";
+import { Background, Controls, ReactFlow, useEdgesState, useNodesState, addEdge, Connection, Edge, MarkerType, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Activity, Bot, Calendar, Database, Mail, MessageSquare, MousePointerClick, Play, Save, Zap } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Activity, Bot, Database, Loader2, MessageSquare, MousePointerClick, Play, Plus, Save, Trash2, Zap } from "lucide-react";
+import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
 
-const INITIAL_NODES = [
+const DEFAULT_NODES: Node[] = [
   {
     id: '1',
     type: 'input',
@@ -37,7 +42,7 @@ const INITIAL_NODES = [
   },
 ];
 
-const INITIAL_EDGES = [
+const DEFAULT_EDGES: Edge[] = [
   { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#64748b' } },
   { id: 'e1-3', source: '1', target: '3', animated: true, style: { stroke: '#64748b' } },
   { id: 'e2-4', source: '2', target: '4', markerEnd: { type: MarkerType.ArrowClosed } },
@@ -52,48 +57,247 @@ const NODE_TYPES = [
   { type: 'msg', label: 'Message', icon: MessageSquare, color: 'text-pink-500' },
 ];
 
+interface WorkflowData {
+  id: number;
+  name: string;
+  description: string | null;
+  nodes: unknown[];
+  edges: unknown[];
+  enabled: boolean;
+}
+
 export function WorkflowEditor() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
+  const [nodes, setNodes, onNodesChange] = useNodesState(DEFAULT_NODES);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(DEFAULT_EDGES);
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowData | null>(null);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [newWorkflow, setNewWorkflow] = useState({ name: "", description: "" });
+
+  // tRPC queries and mutations
+  const { data: workflowsData, isLoading, refetch } = trpc.workflows.list.useQuery();
+  const createMutation = trpc.workflows.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsNewDialogOpen(false);
+      setNewWorkflow({ name: "", description: "" });
+      toast.success("Workflow créé avec succès");
+    },
+    onError: (error) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
+  });
+  const updateMutation = trpc.workflows.update.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Workflow sauvegardé");
+    },
+    onError: (error) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
+  });
+  const deleteMutation = trpc.workflows.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setSelectedWorkflow(null);
+      setNodes(DEFAULT_NODES);
+      setEdges(DEFAULT_EDGES);
+      toast.success("Workflow supprimé");
+    },
+    onError: (error) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
+  });
+  const executeMutation = trpc.workflows.execute.useMutation({
+    onSuccess: (result) => {
+      setIsRunning(false);
+      toast.success("Workflow terminé avec succès", {
+        description: `Execution ID: ${result.executionId}`
+      });
+    },
+    onError: (error) => {
+      setIsRunning(false);
+      toast.error(`Erreur d'exécution: ${error.message}`);
+    },
+  });
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
     [setEdges],
   );
 
+  const handleSelectWorkflow = (workflowId: string) => {
+    if (workflowId === "new") {
+      setSelectedWorkflow(null);
+      setNodes(DEFAULT_NODES);
+      setEdges(DEFAULT_EDGES);
+      return;
+    }
+    
+    const workflow = workflowsData?.find(w => w.id.toString() === workflowId);
+    if (workflow) {
+      setSelectedWorkflow({
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+        nodes: workflow.nodes as unknown[],
+        edges: workflow.edges as unknown[],
+        enabled: workflow.enabled,
+      });
+      setNodes(workflow.nodes as Node[]);
+      setEdges(workflow.edges as Edge[]);
+    }
+  };
+
   const handleSave = () => {
-    toast.success("Workflow sauvegardé", {
-      description: `${nodes.length} nœuds et ${edges.length} connexions enregistrés.`
+    if (selectedWorkflow && workflowsData && workflowsData.length > 0) {
+      updateMutation.mutate({
+        id: selectedWorkflow.id,
+        data: {
+          nodes: nodes as unknown[],
+          edges: edges as unknown[],
+        },
+      });
+    } else {
+      toast.info("Créez d'abord un nouveau workflow pour sauvegarder");
+    }
+  };
+
+  const handleCreate = () => {
+    if (!newWorkflow.name) return;
+    
+    createMutation.mutate({
+      name: newWorkflow.name,
+      description: newWorkflow.description,
+      nodes: nodes as unknown[],
+      edges: edges as unknown[],
+      enabled: false,
     });
   };
 
   const handleRun = () => {
-    setIsRunning(true);
-    toast.info("Exécution du workflow...", {
-      description: "Traitement en cours sur le nœud Orchestrator."
-    });
-    
-    setTimeout(() => {
-      setIsRunning(false);
-      toast.success("Workflow terminé avec succès", {
-        description: "Rapport envoyé par email."
+    if (selectedWorkflow && workflowsData && workflowsData.length > 0) {
+      setIsRunning(true);
+      executeMutation.mutate({ id: selectedWorkflow.id });
+    } else {
+      // Simulation mode
+      setIsRunning(true);
+      toast.info("Exécution du workflow...", {
+        description: "Traitement en cours sur le nœud Orchestrator."
       });
-    }, 3000);
+      
+      setTimeout(() => {
+        setIsRunning(false);
+        toast.success("Workflow terminé avec succès", {
+          description: "Rapport envoyé par email."
+        });
+      }, 3000);
+    }
   };
+
+  const handleDelete = () => {
+    if (selectedWorkflow && workflowsData && workflowsData.length > 0) {
+      deleteMutation.mutate({ id: selectedWorkflow.id });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Activity className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-tight">Éditeur de Workflows</h2>
+          {(!workflowsData || workflowsData.length === 0) && (
+            <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
+              Mode Simulation
+            </Badge>
+          )}
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleSave} className="gap-2">
-            <Save className="h-4 w-4" />
+        <div className="flex gap-2 items-center">
+          {/* Workflow selector */}
+          <Select 
+            value={selectedWorkflow?.id.toString() || "new"} 
+            onValueChange={handleSelectWorkflow}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Sélectionner un workflow" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="new">Nouveau workflow</SelectItem>
+              {workflowsData?.map(w => (
+                <SelectItem key={w.id} value={w.id.toString()}>
+                  {w.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* New workflow dialog */}
+          <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nouveau
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau workflow</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Nom</Label>
+                  <Input 
+                    id="name" 
+                    value={newWorkflow.name} 
+                    onChange={(e) => setNewWorkflow({...newWorkflow, name: e.target.value})}
+                    placeholder="Mon workflow..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="desc">Description</Label>
+                  <Textarea 
+                    id="desc" 
+                    value={newWorkflow.description} 
+                    onChange={(e) => setNewWorkflow({...newWorkflow, description: e.target.value})}
+                    placeholder="Description du workflow..."
+                  />
+                </div>
+              </div>
+              <Button onClick={handleCreate} disabled={createMutation.isPending}>
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  "Créer"
+                )}
+              </Button>
+            </DialogContent>
+          </Dialog>
+
+          <Button variant="outline" size="sm" onClick={handleSave} className="gap-2" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             Sauvegarder
           </Button>
+          {selectedWorkflow && (
+            <Button variant="outline" size="sm" onClick={handleDelete} className="gap-2 text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
           <Button size="sm" onClick={handleRun} disabled={isRunning} className="gap-2">
             <Play className={cn("h-4 w-4", isRunning && "animate-spin")} />
             {isRunning ? "Exécution..." : "Tester"}

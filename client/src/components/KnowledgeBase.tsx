@@ -3,56 +3,93 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { BookOpen, FileText, Search, Upload, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { BookOpen, FileText, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
 
-interface Document {
-  id: string;
+interface LocalDocument {
+  id: number;
   title: string;
-  content: string;
-  source: string;
-  date: Date;
-  score?: number; // Relevance score for search results
-  tags: string[];
+  content: string | null;
+  source: string | null;
+  fileType: string | null;
+  createdAt: Date;
+  score?: number;
 }
 
-const MOCK_DOCS: Document[] = [
+const MOCK_DOCS: LocalDocument[] = [
   {
-    id: "1",
+    id: 1,
     title: "Architecture Jarvis v5.8",
     content: "Le système Jarvis repose sur une architecture hiérarchique à 3 niveaux :\n\n1. **N2 Orchestrator** : Planification long terme, LLM (DGX Spark).\n2. **N1 Investigator** : Analyse profonde, recherche, audit.\n3. **N0 Reflex** : Boucle rapide (<60ms) pour vision et action (Jetson Thor).\n\nLa communication inter-nœuds se fait via Redis et WebSockets.",
     source: "Technical Specs",
-    date: new Date("2025-12-01"),
-    tags: ["architecture", "core", "hardware"],
+    fileType: "md",
+    createdAt: new Date("2025-12-01"),
   },
   {
-    id: "2",
+    id: 2,
     title: "Procédure de Backup",
     content: "Les sauvegardes sont effectuées quotidiennement à 03:00 AM.\n\n- **Base de données** : Dump PostgreSQL vers stockage froid.\n- **Fichiers RAG** : Sync rsync vers NAS externe.\n- **Logs** : Rotation et compression gzip.",
     source: "Ops Manual",
-    date: new Date("2025-11-15"),
-    tags: ["ops", "backup", "security"],
+    fileType: "md",
+    createdAt: new Date("2025-11-15"),
   },
   {
-    id: "3",
+    id: 3,
     title: "Guide API WebSocket",
     content: "L'API WebSocket expose 3 endpoints principaux :\n\n- `/ws/chat` : Flux de dialogue bidirectionnel.\n- `/ws/logs` : Streaming des logs système.\n- `/ws/hardware` : Métriques temps réel (1Hz).\n\nAuthentification via Header `Authorization: Bearer <token>`.",
     source: "API Docs",
-    date: new Date("2025-12-10"),
-    tags: ["api", "dev", "websocket"],
+    fileType: "md",
+    createdAt: new Date("2025-12-10"),
   },
 ];
 
 export function KnowledgeBase() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [documents, setDocuments] = useState<Document[]>(MOCK_DOCS);
+  const [selectedDoc, setSelectedDoc] = useState<LocalDocument | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [localSearchResults, setLocalSearchResults] = useState<LocalDocument[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // tRPC queries and mutations
+  const { data: docsData, isLoading, refetch } = trpc.knowledge.list.useQuery();
+  const [isSearching, setIsSearching] = useState(false);
+  const createMutation = trpc.knowledge.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Document ajouté avec succès");
+    },
+    onError: (error) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
+  });
+  const deleteMutation = trpc.knowledge.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setSelectedDoc(null);
+      toast.success("Document supprimé");
+    },
+    onError: (error) => {
+      toast.error(`Erreur: ${error.message}`);
+    },
+  });
+
+  // Use fallback data if DB returns empty
+  const documents: LocalDocument[] = localSearchResults 
+    ? localSearchResults
+    : (docsData && docsData.length > 0)
+      ? docsData.map(d => ({
+          id: d.id,
+          title: d.title,
+          content: d.content,
+          source: d.source,
+          fileType: d.fileType,
+          createdAt: new Date(d.createdAt),
+        }))
+      : MOCK_DOCS;
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -63,50 +100,23 @@ export function KnowledgeBase() {
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
+    
     try {
-      // Real API call
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Upload failed");
-
-      const result = await response.json();
+      // Read file content
+      const content = await file.text();
       
-      toast.success("Document importé avec succès", {
-        description: `${file.name} a été ajouté à l'index RAG.`
-      });
-
-      // Add new doc to list (optimistic update or from response)
-      const newDoc: Document = {
-        id: result.id || Date.now().toString(),
+      // Create document via tRPC
+      createMutation.mutate({
         title: file.name,
-        content: "Traitement en cours...", // Placeholder until processed
+        content: content,
         source: "Upload",
-        date: new Date(),
-        tags: ["new", "upload"],
-      };
-      setDocuments([newDoc, ...documents]);
+        fileType: file.name.split('.').pop() || "txt",
+        fileSize: file.size,
+      });
       
     } catch (error) {
       console.error("Upload error:", error);
-      // Fallback for PoC demo if API fails
-      toast.success("Simulation: Document importé", {
-        description: `(Mode Démo) ${file.name} ajouté virtuellement.`
-      });
-      const newDoc: Document = {
-        id: Date.now().toString(),
-        title: file.name,
-        content: "Contenu simulé du document importé.\n\nDans la version finale, ce contenu sera extrait par le pipeline d'ingestion RAG.",
-        source: "Upload (Sim)",
-        date: new Date(),
-        tags: ["demo"],
-      };
-      setDocuments([newDoc, ...documents]);
+      toast.error("Erreur lors de l'import du fichier");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -115,24 +125,52 @@ export function KnowledgeBase() {
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
-      setDocuments(MOCK_DOCS);
+      setLocalSearchResults(null);
       return;
     }
 
-    // Mock semantic search scoring
-    const results = MOCK_DOCS.map(doc => {
+    // Local search on available documents
+    const sourceData = (docsData && docsData.length > 0)
+      ? docsData.map(d => ({
+          id: d.id,
+          title: d.title,
+          content: d.content,
+          source: d.source,
+          fileType: d.fileType,
+          createdAt: new Date(d.createdAt),
+        }))
+      : MOCK_DOCS;
+    
+    const results = sourceData.map(doc => {
       let score = 0;
       if (doc.title.toLowerCase().includes(searchQuery.toLowerCase())) score += 0.5;
-      if (doc.content.toLowerCase().includes(searchQuery.toLowerCase())) score += 0.3;
-      if (doc.tags.some(tag => tag.includes(searchQuery.toLowerCase()))) score += 0.2;
+      if (doc.content?.toLowerCase().includes(searchQuery.toLowerCase())) score += 0.3;
       return { ...doc, score };
     })
-    .filter(doc => doc.score > 0)
+    .filter(doc => doc.score && doc.score > 0)
     .sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    setDocuments(results);
-    if (results.length > 0) setSelectedDoc(results[0]);
+    setLocalSearchResults(results);
+    if (results.length > 0) {
+      setSelectedDoc(results[0]);
+    } else {
+      toast.info("Aucun résultat trouvé");
+    }
   };
+
+  const handleDelete = (id: number) => {
+    if (docsData && docsData.length > 0) {
+      deleteMutation.mutate({ id });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -141,6 +179,11 @@ export function KnowledgeBase() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-tight">Base de Connaissances (RAG)</h2>
+          {(!docsData || docsData.length === 0) && (
+            <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
+              Mode Simulation
+            </Badge>
+          )}
         </div>
         
         <div className="flex-1 max-w-md flex gap-2">
@@ -154,7 +197,9 @@ export function KnowledgeBase() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <Button onClick={handleSearch}>Rechercher</Button>
+          <Button onClick={handleSearch}>
+            Rechercher
+          </Button>
         </div>
 
         <input 
@@ -203,11 +248,16 @@ export function KnowledgeBase() {
                     {doc.content}
                   </p>
                   <div className="flex gap-1 mt-1 flex-wrap">
-                    {doc.tags.map(tag => (
-                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        #{tag}
+                    {doc.fileType && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        .{doc.fileType}
                       </span>
-                    ))}
+                    )}
+                    {doc.source && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        {doc.source}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))}
@@ -225,23 +275,33 @@ export function KnowledgeBase() {
                     <CardTitle className="text-xl text-primary">{selectedDoc.title}</CardTitle>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <FileText className="h-3 w-3" />
-                      <span>{selectedDoc.source}</span>
+                      <span>{selectedDoc.source || "Unknown"}</span>
                       <span>•</span>
-                      <span>{selectedDoc.date.toLocaleDateString()}</span>
+                      <span>{selectedDoc.createdAt.toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {selectedDoc.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
+                    {selectedDoc.fileType && (
+                      <Badge variant="outline" className="text-xs">
+                        {selectedDoc.fileType}
                       </Badge>
-                    ))}
+                    )}
+                    {docsData && docsData.length > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(selectedDoc.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
               <ScrollArea className="flex-1 p-6">
                 <div className="prose prose-invert prose-sm max-w-none">
-                  <Streamdown>{selectedDoc.content}</Streamdown>
+                  <Streamdown>{selectedDoc.content || "Aucun contenu disponible"}</Streamdown>
                 </div>
               </ScrollArea>
             </>

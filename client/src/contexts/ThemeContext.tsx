@@ -14,12 +14,14 @@ interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
   switchable?: boolean;
+  storageKey?: string;
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = "light",
   switchable = false,
+  storageKey = "vite-ui-theme",
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (switchable) {
