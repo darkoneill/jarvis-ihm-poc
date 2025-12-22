@@ -396,3 +396,18 @@ Tous les tickets IHM jusqu'à v5.9.21 sont complétés. Les fonctionnalités sui
 - [x] TEST-003 : Page Statistiques fonctionnelle
 - [x] TEST-004 : Correction bug SQL created_at -> conversations.createdAt
 - [ ] TEST-005 : Tester archivage automatique (manuel)
+
+
+## Phase 30 - Push Code Source sur GitHub (COMPLETED)
+- [x] Copier le code source de l'IHM vers HugiMunr-test/ihm/
+- [x] Committer et pousser sur GitHub
+- [x] README.md mis à jour avec documentation v5.9.22
+
+
+## Phase 31 - Dockerisation de l'IHM (COMPLETED)
+- [x] Créer le Dockerfile multi-stage (build + production)
+- [x] Créer le docker-compose.yml avec MySQL + Redis
+- [x] Créer le fichier .dockerignore
+- [x] Créer le script d'initialisation de la base de données
+- [x] Créer DOCKER.md avec documentation complète
+- [x] Pousser sur GitHub

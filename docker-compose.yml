@@ -1,0 +1,105 @@
+# Jarvis IHM - Docker Compose
+# Déploiement complet avec MySQL, Redis et l'application
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Application IHM
+  # ============================================
+  jarvis-ihm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis-ihm
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Base de données
+      - DATABASE_URL=mysql://jarvis:jarvis2024@mysql:3306/jarvis_ihm
+      # Authentification locale
+      - LOCAL_AUTH_ENABLED=true
+      - JWT_SECRET=${JWT_SECRET:-jarvis-secret-key-change-in-production}
+      # LLM Configuration (optionnel)
+      - N2_ENABLED=${N2_ENABLED:-false}
+      - N2_API_URL=${N2_API_URL:-http://host.docker.internal:8000}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - FORGE_API_KEY=${FORGE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Monitoring (optionnel)
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-}
+      - PROMETHEUS_ENABLED=${PROMETHEUS_ENABLED:-false}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - jarvis-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Base de données MySQL
+  # ============================================
+  mysql:
+    image: mysql:8.0
+    container_name: jarvis-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=jarvis_ihm
+      - MYSQL_USER=jarvis
+      - MYSQL_PASSWORD=jarvis2024
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - jarvis-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # Redis (Pub/Sub pour logs temps réel)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: jarvis-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - jarvis-network
+    command: redis-server --appendonly yes
+
+# ============================================
+# Volumes persistants
+# ============================================
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# ============================================
+# Réseau
+# ============================================
+networks:
+  jarvis-network:
+    driver: bridge
