@@ -8,6 +8,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { KeyboardShortcutsProvider } from "./contexts/KeyboardShortcutsContext";
 import { Loader2 } from "lucide-react";
+import { PageTransition } from "./components/PageTransition";
+import { useLocation } from "wouter";
 
 // Import components
 import { ChatInterface } from "./components/ChatInterface";
@@ -45,7 +47,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const [location] = useLocation();
+  
   return (
+    <PageTransition pageKey={location}>
     <Switch>
       <Route path="/login">
         <LoginPage />
@@ -123,6 +128,7 @@ function Router() {
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    </PageTransition>
   );
 }
 

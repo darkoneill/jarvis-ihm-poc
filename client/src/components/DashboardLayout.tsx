@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   Library,
   LogOut,
+  Monitor,
   Plug,
   Settings,
   User,
@@ -37,6 +38,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ContextualAssistant } from "./ContextualAssistant";
+import { MultiScreenManager, useDetachedWindow } from "./MultiScreenManager";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,6 +47,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAssistantMinimized, setIsAssistantMinimized] = useState(false);
+  const [isMultiScreenOpen, setIsMultiScreenOpen] = useState(false);
+  const { isDetached } = useDetachedWindow();
   const [location] = useLocation();
   const { isConnected } = useWebSocket("/ws", { showToasts: false });
   const { user, logout } = useAuth();
@@ -213,6 +217,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
              </span>
            </div>
            <div className="flex items-center gap-3">
+             {!isDetached && (
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 className="h-8 w-8"
+                 onClick={() => setIsMultiScreenOpen(true)}
+                 title="Mode multi-écran"
+               >
+                 <Monitor className="h-4 w-4" />
+               </Button>
+             )}
              <ExportButton size="sm" />
              <NotificationCenter />
              <ConnectionStatus />
@@ -232,6 +247,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           currentPage={location}
           isMinimized={isAssistantMinimized}
           onToggleMinimize={() => setIsAssistantMinimized(!isAssistantMinimized)}
+        />
+
+        {/* Multi-Screen Manager */}
+        <MultiScreenManager
+          isOpen={isMultiScreenOpen}
+          onOpenChange={setIsMultiScreenOpen}
         />
       </main>
     </div>
