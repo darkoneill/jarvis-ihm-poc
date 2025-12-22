@@ -142,4 +142,48 @@ describe("Conversations Router", () => {
       expect(result.isSimulation).toBe(true);
     });
   });
+
+  describe("generateTitle", () => {
+    it("should generate a title from message content", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.generateTitle({ content: "Comment configurer le système de backup ?" });
+      
+      expect(result).toHaveProperty("title");
+      expect(result.title).toBe("Comment configurer le système de backup ?");
+    });
+
+    it("should remove greetings from the title", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.generateTitle({ content: "Bonjour, je voudrais configurer le système" });
+      
+      expect(result).toHaveProperty("title");
+      expect(result.title).toBe("Je voudrais configurer le système");
+    });
+
+    it("should truncate long titles", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const longContent = "Ceci est un message très long qui dépasse largement les cinquante caractères autorisés pour un titre";
+      const result = await caller.generateTitle({ content: longContent });
+      
+      expect(result).toHaveProperty("title");
+      expect(result.title.length).toBeLessThanOrEqual(50);
+      expect(result.title.endsWith("...")).toBe(true);
+    });
+
+    it("should capitalize first letter", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.generateTitle({ content: "hello, comment ça va ?" });
+      
+      expect(result).toHaveProperty("title");
+      expect(result.title.charAt(0)).toBe(result.title.charAt(0).toUpperCase());
+    });
+  });
 });

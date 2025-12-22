@@ -306,3 +306,12 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-125 : Suppression de conversations (déjà implémenté)
 - [x] Tests unitaires (219 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.17, STATUS.md)
+
+
+## Phase 25 - Sauvegarde Auto, Recherche et Export (COMPLETED)
+- [x] IHM-130 : Sauvegarde automatique des conversations lors du premier message
+- [x] IHM-131 : Génération de titre basé sur le contenu du premier message
+- [x] IHM-132 : Recherche full-text dans le contenu des messages
+- [x] IHM-133 : Export de conversation depuis l'historique (Markdown/JSON)
+- [x] Tests unitaires (223 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.18, STATUS.md)

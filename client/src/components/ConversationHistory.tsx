@@ -32,6 +32,9 @@ import {
   Trash2,
   Edit2,
   X,
+  FileText,
+  Loader2,
+  Download,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -79,6 +82,15 @@ export function ConversationHistory({
     },
   });
 
+  // Full-text search in messages
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  const searchMessagesQuery = trpc.conversations.search.useQuery(
+    { query: searchQuery },
+    {
+      enabled: searchQuery.length >= 3 && isSearchingMessages,
+    }
+  );
+
   const handleArchive = (id: number, archived: boolean) => {
     updateMutation.mutate({ id, archived: !archived });
   };
@@ -103,6 +115,86 @@ export function ConversationHistory({
   const handleSelect = (id: number) => {
     onSelectConversation?.(id);
     setIsOpen(false);
+  };
+
+  // Export conversation to Markdown
+  const handleExportMarkdown = async (id: number, title: string) => {
+    try {
+      // Fetch conversation with messages
+      const response = await fetch(`/api/trpc/conversations.get?input=${encodeURIComponent(JSON.stringify({ id }))}`);
+      const data = await response.json();
+      
+      if (!data.result?.data?.messages) {
+        toast.error("Impossible de charger la conversation");
+        return;
+      }
+
+      const messages = data.result.data.messages;
+      const conversation = data.result.data.conversation;
+      
+      // Generate Markdown content
+      let markdown = `# ${conversation.title}\n\n`;
+      markdown += `**Date**: ${new Date(conversation.createdAt).toLocaleDateString('fr-FR')}\n`;
+      markdown += `**Messages**: ${messages.length}\n\n`;
+      markdown += `---\n\n`;
+      
+      for (const msg of messages) {
+        const role = msg.role === 'user' ? '👤 Vous' : '🤖 Jarvis';
+        const time = new Date(msg.createdAt).toLocaleTimeString('fr-FR');
+        markdown += `### ${role} (${time})\n\n`;
+        markdown += `${msg.content}\n\n`;
+      }
+      
+      // Create and download file
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Conversation exportée en Markdown");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Erreur lors de l'export");
+    }
+  };
+
+  // Export conversation to JSON
+  const handleExportJSON = async (id: number, title: string) => {
+    try {
+      const response = await fetch(`/api/trpc/conversations.get?input=${encodeURIComponent(JSON.stringify({ id }))}`);
+      const data = await response.json();
+      
+      if (!data.result?.data) {
+        toast.error("Impossible de charger la conversation");
+        return;
+      }
+
+      const exportData = {
+        conversation: data.result.data.conversation,
+        messages: data.result.data.messages,
+        exportedAt: new Date().toISOString(),
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Conversation exportée en JSON");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Erreur lors de l'export");
+    }
   };
 
   return (
@@ -130,12 +222,25 @@ export function ConversationHistory({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher..."
+                placeholder="Rechercher dans les titres..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchingMessages(false);
+                }}
                 className="pl-9"
               />
             </div>
+            <Button
+              variant={isSearchingMessages ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsSearchingMessages(!isSearchingMessages)}
+              disabled={searchQuery.length < 3}
+              title={searchQuery.length < 3 ? "Entrez au moins 3 caractères" : "Rechercher dans le contenu des messages"}
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Messages
+            </Button>
             <Button
               variant={showArchived ? "default" : "outline"}
               size="sm"
@@ -145,6 +250,38 @@ export function ConversationHistory({
               Archives
             </Button>
           </div>
+
+          {/* Search results in messages */}
+          {isSearchingMessages && searchQuery.length >= 3 && (
+            <div className="border rounded-lg p-3 bg-muted/30">
+              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Résultats dans les messages
+              </h4>
+              {searchMessagesQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Recherche en cours...
+                </div>
+              ) : (searchMessagesQuery.data?.results as { conversations: unknown[]; messages: { conversationId: number; content: string; createdAt: Date }[] })?.messages?.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun message trouvé</p>
+              ) : (
+                <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                  {(searchMessagesQuery.data?.results as { conversations: unknown[]; messages: { conversationId: number; content: string; createdAt: Date }[] })?.messages?.slice(0, 5).map((result: { conversationId: number; content: string; createdAt: Date }, index: number) => (
+                    <div
+                      key={index}
+                      className="text-sm p-2 rounded bg-background/50 cursor-pointer hover:bg-background transition-colors"
+                      onClick={() => handleSelect(result.conversationId)}
+                    >
+                      <p className="text-muted-foreground truncate">
+                        ...{result.content.substring(0, 100)}...
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Simulation badge */}
           {data?.isSimulation && (
@@ -251,6 +388,21 @@ export function ConversationHistory({
                         }}>
                           <Archive className="h-4 w-4 mr-2" />
                           {conversation.archived ? "Désarchiver" : "Archiver"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportMarkdown(conversation.id, conversation.title);
+                        }}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Exporter (Markdown)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportJSON(conversation.id, conversation.title);
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Exporter (JSON)
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

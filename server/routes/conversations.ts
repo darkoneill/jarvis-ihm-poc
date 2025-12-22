@@ -141,6 +141,43 @@ export const conversationsRouter = router({
       }
     }),
 
+  // Generate a title from message content
+  generateTitle: publicProcedure
+    .input(z.object({ content: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      // Extract first 50 characters and clean up
+      let title = input.content.trim();
+      
+      // Remove common greetings
+      const greetings = ['bonjour', 'salut', 'hello', 'hi', 'hey', 'bonsoir'];
+      const lowerTitle = title.toLowerCase();
+      for (const greeting of greetings) {
+        if (lowerTitle.startsWith(greeting)) {
+          title = title.substring(greeting.length).trim();
+          // Remove punctuation after greeting
+          if (title.startsWith(',') || title.startsWith('!') || title.startsWith('.')) {
+            title = title.substring(1).trim();
+          }
+          break;
+        }
+      }
+      
+      // Truncate to 50 chars and add ellipsis if needed
+      if (title.length > 50) {
+        title = title.substring(0, 47) + '...';
+      }
+      
+      // If title is empty after processing, use default
+      if (!title) {
+        title = `Conversation du ${new Date().toLocaleDateString('fr-FR')}`;
+      }
+      
+      // Capitalize first letter
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+      
+      return { title };
+    }),
+
   // Create a new conversation
   create: publicProcedure
     .input(

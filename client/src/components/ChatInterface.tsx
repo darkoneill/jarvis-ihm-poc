@@ -164,6 +164,22 @@ export function ChatInterface() {
 
   const { exportChat, isExporting } = useChatExport();
 
+  // Mutation to create a new conversation
+  const createConversationMutation = trpc.conversations.create.useMutation({
+    onSuccess: (data) => {
+      if (!data.isSimulation) {
+        setCurrentConversationId(data.id);
+        setSessionId(`conversation-${data.id}`);
+      }
+    },
+  });
+
+  // Mutation to add a message to a conversation
+  const addMessageMutation = trpc.conversations.addMessage.useMutation();
+
+  // Mutation to generate a title
+  const generateTitleMutation = trpc.conversations.generateTitle.useMutation();
+
   const clearHistoryMutation = trpc.chat.clearHistory.useMutation({
     onSuccess: () => {
       setMessages([
@@ -257,6 +273,40 @@ export function ChatInterface() {
     setMessages((prev) => [...prev, userMessage]);
     const messageToSend = inputValue;
     setInputValue("");
+
+    // Auto-save: Create a new conversation if this is the first user message
+    if (currentConversationId === null && messages.length <= 1) {
+      try {
+        // Generate title from first message
+        const titleResult = await generateTitleMutation.mutateAsync({ content: messageToSend });
+        
+        // Create the conversation with the generated title
+        const newConversation = await createConversationMutation.mutateAsync({
+          title: titleResult.title,
+          initialMessage: messageToSend,
+        });
+        
+        if (!newConversation.isSimulation) {
+          toast.success("Conversation sauvegardée", {
+            description: `"${titleResult.title}"`,
+          });
+        }
+      } catch (error) {
+        console.error("Error creating conversation:", error);
+        // Continue even if save fails
+      }
+    } else if (currentConversationId !== null) {
+      // Add message to existing conversation
+      try {
+        await addMessageMutation.mutateAsync({
+          conversationId: currentConversationId,
+          role: "user",
+          content: messageToSend,
+        });
+      } catch (error) {
+        console.error("Error adding message:", error);
+      }
+    }
 
     // Check if streaming is enabled in LLM config
     const streamEnabled = llmConfig?.streamEnabled !== false && useStreaming;
