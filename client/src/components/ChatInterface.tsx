@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { Bot, Download, Loader2, Paperclip, RefreshCw, Send, User } from "lucide-react";
+import { Bot, Cloud, Cpu, Download, Loader2, Paperclip, RefreshCw, Send, Server, Sparkles, User } from "lucide-react";
 import { useChatExport } from "./ExportButton";
 import { VoiceButton } from "./VoiceButton";
 import { ConversationHistory } from "./ConversationHistory";
@@ -191,6 +191,28 @@ export function ChatInterface() {
 
   const isConnected = !sendMessageMutation.isError;
 
+  // Get active LLM configuration
+  const { data: llmConfig } = trpc.llmConfig.get.useQuery();
+
+  // Provider display info
+  const getProviderInfo = (provider: string | undefined) => {
+    switch (provider) {
+      case 'ollama':
+        return { name: 'Ollama', icon: <Cpu className="h-3 w-3" />, color: 'text-green-400' };
+      case 'openai':
+        return { name: 'OpenAI', icon: <Sparkles className="h-3 w-3" />, color: 'text-emerald-400' };
+      case 'anthropic':
+        return { name: 'Anthropic', icon: <Bot className="h-3 w-3" />, color: 'text-orange-400' };
+      case 'n2':
+        return { name: 'N2 Supervisor', icon: <Server className="h-3 w-3" />, color: 'text-purple-400' };
+      case 'forge':
+      default:
+        return { name: 'Forge API', icon: <Cloud className="h-3 w-3" />, color: 'text-blue-400' };
+    }
+  };
+
+  const providerInfo = getProviderInfo(llmConfig?.provider);
+
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto bg-card/50 border border-border rounded-lg shadow-sm overflow-hidden backdrop-blur-sm">
       {/* Chat Header */}
@@ -203,9 +225,15 @@ export function ChatInterface() {
             <h2 className="font-semibold text-sm">Jarvis N2 Orchestrator</h2>
             <div className="flex items-center gap-1.5">
               <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-orange-500")}></span>
-              <span className="text-xs text-muted-foreground">
-                {isConnected ? "LLM API Connected" : "Connection Error"}
+              <span className={cn("flex items-center gap-1 text-xs", providerInfo.color)}>
+                {providerInfo.icon}
+                {providerInfo.name}
               </span>
+              {llmConfig?.model && llmConfig.model !== 'default' && (
+                <span className="text-xs text-muted-foreground">
+                  · {llmConfig.model}
+                </span>
+              )}
             </div>
           </div>
         </div>

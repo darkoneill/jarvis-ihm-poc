@@ -270,3 +270,11 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-109 : Sauvegarde et application dynamique de la config
 - [x] Tests unitaires (177 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.13, STATUS.md)
+
+
+## Phase 21 - Intégration LLM Dynamique au Chat (COMPLETED)
+- [x] IHM-110 : Intégrer llmConfig.get au ChatInterface
+- [x] IHM-111 : Indicateur provider actif dans le header du chat
+- [x] IHM-112 : Affichage du modèle utilisé
+- [x] Tests unitaires (177 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.14, STATUS.md)
