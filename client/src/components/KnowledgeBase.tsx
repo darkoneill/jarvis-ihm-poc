@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { BookOpen, FileText, Search, Upload } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, FileText, Search, Upload, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
 import { Streamdown } from "streamdown";
+import { toast } from "sonner";
 
 interface Document {
   id: string;
@@ -50,6 +51,67 @@ export function KnowledgeBase() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [documents, setDocuments] = useState<Document[]>(MOCK_DOCS);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // Real API call
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const result = await response.json();
+      
+      toast.success("Document importé avec succès", {
+        description: `${file.name} a été ajouté à l'index RAG.`
+      });
+
+      // Add new doc to list (optimistic update or from response)
+      const newDoc: Document = {
+        id: result.id || Date.now().toString(),
+        title: file.name,
+        content: "Traitement en cours...", // Placeholder until processed
+        source: "Upload",
+        date: new Date(),
+        tags: ["new", "upload"],
+      };
+      setDocuments([newDoc, ...documents]);
+      
+    } catch (error) {
+      console.error("Upload error:", error);
+      // Fallback for PoC demo if API fails
+      toast.success("Simulation: Document importé", {
+        description: `(Mode Démo) ${file.name} ajouté virtuellement.`
+      });
+      const newDoc: Document = {
+        id: Date.now().toString(),
+        title: file.name,
+        content: "Contenu simulé du document importé.\n\nDans la version finale, ce contenu sera extrait par le pipeline d'ingestion RAG.",
+        source: "Upload (Sim)",
+        date: new Date(),
+        tags: ["demo"],
+      };
+      setDocuments([newDoc, ...documents]);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
@@ -95,9 +157,16 @@ export function KnowledgeBase() {
           <Button onClick={handleSearch}>Rechercher</Button>
         </div>
 
-        <Button variant="outline" className="gap-2">
-          <Upload className="h-4 w-4" />
-          Importer
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept=".pdf,.md,.txt,.docx"
+          onChange={handleFileChange}
+        />
+        <Button variant="outline" className="gap-2" onClick={handleUploadClick} disabled={isUploading}>
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {isUploading ? "Envoi..." : "Importer"}
         </Button>
       </div>
 
