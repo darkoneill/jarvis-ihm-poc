@@ -21,6 +21,7 @@ import { KnowledgeBase } from "./components/KnowledgeBase";
 import { DashboardLayout } from "./components/DashboardLayout";
 import SettingsPage from "./pages/SettingsPage";
 import DashboardPage from "./pages/DashboardPage";
+import LLMSettingsPage from "./pages/LLMSettingsPage";
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SettingsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/llm">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <LLMSettingsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

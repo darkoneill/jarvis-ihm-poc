@@ -14,6 +14,7 @@ import { conversationsRouter } from "./routes/conversations";
 import { customWidgetsRouter } from "./routes/customWidgets";
 import { themesRouter } from "./routes/themes";
 import { logsRouter } from "./routes/logs";
+import { llmConfigRouter } from "./routes/llmConfig";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -42,6 +43,7 @@ export const appRouter = router({
   customWidgets: customWidgetsRouter,
   themes: themesRouter,
   logs: logsRouter,
+  llmConfig: llmConfigRouter,
 });
 
 export type AppRouter = typeof appRouter;

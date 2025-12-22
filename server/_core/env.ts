@@ -7,4 +7,15 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // LLM Configuration
+  llmProvider: process.env.LLM_PROVIDER ?? "forge",
+  ollamaUrl: process.env.OLLAMA_URL ?? "http://localhost:11434",
+  ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2:3b",
+  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-3-haiku-20240307",
+  n2Enabled: process.env.N2_ENABLED === "true",
+  n2ApiUrl: process.env.N2_API_URL ?? "http://localhost:8000",
+  n2Timeout: parseInt(process.env.N2_TIMEOUT ?? "30000"),
 };

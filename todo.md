@@ -260,3 +260,13 @@ L'IHM est une interface de supervision, pas l'outil principal.
 | `docs/IHM_LLM_CONFIGURATION.md` | Configuration LLM flexible |
 | `.github/workflows/ci.yml` | Pipeline CI/CD complet |
 | `.github/workflows/llm-tests.yml` | Tests par provider LLM |
+
+
+## Phase 20 - Interface Configuration LLM (COMPLETED)
+- [x] IHM-105 : Schéma DB pour configuration LLM (llm_configs, system_settings)
+- [x] IHM-106 : Routes tRPC pour CRUD configuration LLM
+- [x] IHM-107 : Page /settings/llm avec sélecteur de provider
+- [x] IHM-108 : Test de connexion LLM depuis l'interface
+- [x] IHM-109 : Sauvegarde et application dynamique de la config
+- [x] Tests unitaires (177 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.13, STATUS.md)

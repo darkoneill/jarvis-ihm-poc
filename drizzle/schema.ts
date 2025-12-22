@@ -300,3 +300,46 @@ export const pluginExecutions = mysqlTable("plugin_executions", {
 
 export type PluginExecution = typeof pluginExecutions.$inferSelect;
 export type InsertPluginExecution = typeof pluginExecutions.$inferInsert;
+
+/**
+ * LLM Configuration table for storing LLM provider settings
+ */
+export const llmConfigs = mysqlTable("llm_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  provider: mysqlEnum("provider", ["forge", "ollama", "openai", "anthropic", "n2"]).default("forge").notNull(),
+  apiUrl: varchar("apiUrl", { length: 512 }),
+  apiKey: varchar("apiKey", { length: 512 }), // Encrypted in production
+  model: varchar("model", { length: 100 }),
+  temperature: int("temperature").default(70).notNull(), // Stored as 0-100, divided by 100 for use
+  maxTokens: int("maxTokens").default(4096).notNull(),
+  timeout: int("timeout").default(30000).notNull(), // milliseconds
+  streamEnabled: boolean("streamEnabled").default(true).notNull(),
+  fallbackEnabled: boolean("fallbackEnabled").default(true).notNull(),
+  fallbackProvider: mysqlEnum("fallbackProvider", ["forge", "ollama", "openai", "anthropic", "n2"]).default("forge"),
+  lastTestedAt: timestamp("lastTestedAt"),
+  lastTestStatus: mysqlEnum("lastTestStatus", ["success", "error", "pending"]),
+  lastTestLatency: int("lastTestLatency"), // milliseconds
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LLMConfig = typeof llmConfigs.$inferSelect;
+export type InsertLLMConfig = typeof llmConfigs.$inferInsert;
+
+/**
+ * System settings table for global configuration
+ */
+export const systemSettings = mysqlTable("system_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value"),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).default("general").notNull(),
+  isSecret: boolean("isSecret").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;

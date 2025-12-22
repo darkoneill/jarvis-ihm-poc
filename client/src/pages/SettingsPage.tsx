@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { 
   Bell, 
+  Bot,
+  ChevronRight,
   Globe, 
   Keyboard, 
   Loader2, 
@@ -31,6 +33,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { AudioAlertSettings } from "@/components/AudioAlertSettings";
+import { Link } from "wouter";
 
 interface PreferencesState {
   theme: "light" | "dark" | "system";
@@ -409,6 +412,33 @@ export default function SettingsPage() {
               <span>30s (économie)</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* LLM Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Configuration LLM
+          </CardTitle>
+          <CardDescription>
+            Configurez le modèle de langage utilisé par Jarvis
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/llm">
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                Gérer les providers LLM
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <p className="text-xs text-muted-foreground mt-2">
+            Forge API, Ollama, OpenAI, Anthropic, N2 Supervisor
+          </p>
         </CardContent>
       </Card>
 
