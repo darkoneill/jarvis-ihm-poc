@@ -3,7 +3,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { Bot, Loader2, Mic, Paperclip, RefreshCw, Send, User } from "lucide-react";
+import { Bot, Download, Loader2, Mic, Paperclip, RefreshCw, Send, User } from "lucide-react";
+import { useChatExport } from "./ExportButton";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
@@ -98,6 +99,8 @@ export function ChatInterface() {
     },
   });
 
+  const { exportChat, isExporting } = useChatExport();
+
   const clearHistoryMutation = trpc.chat.clearHistory.useMutation({
     onSuccess: () => {
       setMessages([
@@ -175,6 +178,27 @@ export function ChatInterface() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => exportChat({
+              messages: messages.map(m => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp.toISOString(),
+              })),
+              sessionId,
+            })}
+            disabled={isExporting || messages.length <= 1}
+            className="gap-2 text-muted-foreground"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Exporter
+          </Button>
           <Button 
             variant="ghost" 
             size="sm" 

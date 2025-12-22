@@ -13,8 +13,13 @@ import {
   LayoutDashboard,
   Library,
   Settings,
-  Workflow
+  Workflow,
+  Wifi,
+  WifiOff
 } from "lucide-react";
+import { NotificationCenter } from "./NotificationCenter";
+import { ExportButton } from "./ExportButton";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -25,6 +30,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [location] = useLocation();
+  const { isConnected } = useWebSocket("/ws", { showToasts: false });
 
   const navItems = [
     { icon: Bot, label: "Dialogue", href: "/" },
@@ -138,8 +144,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                ONLINE
              </span>
            </div>
-           <div className="font-mono text-xs text-muted-foreground opacity-50">
-             v5.9.0-alpha
+           <div className="flex items-center gap-3">
+             <ExportButton size="sm" />
+             <NotificationCenter />
+             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+               {isConnected ? (
+                 <Wifi className="h-3.5 w-3.5 text-green-500" />
+               ) : (
+                 <WifiOff className="h-3.5 w-3.5 text-red-500" />
+               )}
+             </div>
+             <div className="font-mono text-xs text-muted-foreground opacity-50">
+               v5.9.0-alpha
+             </div>
            </div>
         </header>
 

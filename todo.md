@@ -46,3 +46,13 @@
 - [x] Endpoint /api/hardware/metrics (CPU, GPU, RAM, etc.)
 - [x] Seed de données de test (tâches, jobs, documents)
 - [x] Tests unitaires pour chat et hardware routers (28 tests passés)
+
+## Phase 6 - Fonctionnalités Avancées (COMPLETED)
+- [x] Recherche RAG avec embeddings vectoriels
+- [x] Endpoint de génération d'embeddings via LLM Forge API
+- [x] Recherche sémantique dans la base de connaissances (cosine similarity)
+- [x] Notifications WebSocket temps réel (/ws endpoint)
+- [x] Alertes hardware (surchauffe GPU, UPS critique) avec seuils configurables
+- [x] Export PDF/HTML des rapports de performance
+- [x] Export PDF/HTML de l'historique des conversations
+- [x] Tests unitaires (63 tests passés)
