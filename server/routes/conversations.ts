@@ -1005,18 +1005,18 @@ export const conversationsRouter = router({
         
         const monthlyResult = await db
           .select({
-            month: sql<string>`DATE_FORMAT(created_at, '%Y-%m')`,
+            month: sql<string>`DATE_FORMAT(${conversations.createdAt}, '%Y-%m')`,
             count: sql<number>`count(*)`,
           })
           .from(conversations)
           .where(
             and(
               eq(conversations.userId, ctx.user.id),
-              sql`created_at >= ${sixMonthsAgo}`
+              sql`${conversations.createdAt} >= ${sixMonthsAgo}`
             )
           )
-          .groupBy(sql`DATE_FORMAT(created_at, '%Y-%m')`)
-          .orderBy(sql`DATE_FORMAT(created_at, '%Y-%m')`);
+          .groupBy(sql`DATE_FORMAT(${conversations.createdAt}, '%Y-%m')`)
+          .orderBy(sql`DATE_FORMAT(${conversations.createdAt}, '%Y-%m')`);
 
         const conversationsByMonth = monthlyResult.map(r => ({
           month: r.month,
@@ -1045,12 +1045,12 @@ export const conversationsRouter = router({
         // Most active day of week
         const dayResult = await db
           .select({
-            dayOfWeek: sql<number>`DAYOFWEEK(created_at)`,
+            dayOfWeek: sql<number>`DAYOFWEEK(${conversations.createdAt})`,
             count: sql<number>`count(*)`,
           })
           .from(conversations)
           .where(eq(conversations.userId, ctx.user.id))
-          .groupBy(sql`DAYOFWEEK(created_at)`)
+          .groupBy(sql`DAYOFWEEK(${conversations.createdAt})`)
           .orderBy(desc(sql`count(*)`));
 
         const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];

@@ -388,3 +388,11 @@ Tous les tickets IHM jusqu'à v5.9.21 sont complétés. Les fonctionnalités sui
 1. **Déploiement local** : Tester l'IHM sur Windows WSL2 ou Linux avec Ollama local
 2. **Activation N2** : Activer N2_ENABLED=true une fois le N2 Supervisor déployé
 3. **Tests E2E** : Exécuter les tests Playwright sur l'environnement de production
+
+
+## Phase 29 - Tests de Validation (COMPLETED)
+- [x] TEST-001 : Activer LOCAL_AUTH_ENABLED=true
+- [x] TEST-002 : Tester connexion locale (admin/jarvis2024)
+- [x] TEST-003 : Page Statistiques fonctionnelle
+- [x] TEST-004 : Correction bug SQL created_at -> conversations.createdAt
+- [ ] TEST-005 : Tester archivage automatique (manuel)

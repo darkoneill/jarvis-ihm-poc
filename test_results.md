@@ -44,3 +44,48 @@ C'est noté.
 - [ ] IHM-020 : Tests E2E Browser (Playwright)
 - [ ] IHM-050 : Synchroniser tâches avec Redis Core
 - [ ] IHM-060 : Remplacer LLM Forge par API N2
+
+
+---
+
+# Résultats des Tests - Jarvis IHM v5.9.21
+
+## TEST-001 : Authentification Locale ✅ RÉUSSI
+
+**Date** : 2025-12-22
+**Environnement** : Sandbox Manus
+
+### Configuration
+- `LOCAL_AUTH_ENABLED=true` activé via webdev_edit_secrets
+- Page de connexion locale accessible à `/login/local`
+
+### Résultats
+- ✅ Page de connexion locale affichée correctement
+- ✅ Onglets "Connexion" et "Inscription" visibles
+- ✅ Identifiants par défaut affichés (admin / jarvis2024)
+- ✅ Connexion réussie avec admin/jarvis2024
+- ✅ Redirection vers le dashboard après connexion
+- ✅ Utilisateur affiché comme "Administrateur Local" (AL)
+- ✅ Mode 100% Local indiqué en bas de la page
+
+---
+
+## TEST-002 : Interface Statistiques ✅ VISIBLE
+
+Le lien "Statistiques" est visible dans la navigation sidebar.
+
+
+### Détails de la page Statistiques
+- ✅ Total Conversations : 0 (dont 0 archivées)
+- ✅ Total Messages : 0 (échangés avec Jarvis)
+- ✅ Moyenne par Conv. : 0 messages par conversation
+- ✅ Jour le plus actif : N/A
+- ✅ Conversations par Mois : Graphique visible (aucune donnée)
+- ✅ Distribution des Tags : Section visible (aucun tag utilisé)
+- ✅ Temps de Réponse Moyen : 0s
+- ✅ Conversations Actives : 0
+- ✅ Taux d'Archivage : 0%
+
+---
+
+## TEST-003 : Page Paramètres - Archivage Automatique
