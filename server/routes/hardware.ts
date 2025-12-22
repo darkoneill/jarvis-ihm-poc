@@ -3,6 +3,7 @@ import { publicProcedure, router } from "../_core/trpc";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as os from "os";
+import { getPrometheusClient, JARVIS_METRICS } from "../_core/prometheus";
 
 const execAsync = promisify(exec);
 
@@ -51,8 +52,6 @@ function parseCpuUsage(stat: string): number {
   const idle = parts[3] + (parts[4] || 0); // idle + iowait
   const total = parts.reduce((a, b) => a + b, 0);
   
-  // This gives instantaneous values, not delta - for demo purposes
-  // In production, you'd track deltas between measurements
   return total > 0 ? Math.round(((total - idle) / total) * 100) : 0;
 }
 
@@ -101,13 +100,11 @@ async function getNetworkStats(): Promise<{ rx: number; tx: number; interface: s
 // Get CPU temperature (if available)
 async function getCpuTemperature(): Promise<number | null> {
   try {
-    // Try thermal zone first
     const temp = await safeExec("cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null");
     if (temp) {
       return parseInt(temp, 10) / 1000;
     }
     
-    // Try sensors command
     const sensors = await safeExec("sensors 2>/dev/null | grep -i 'core 0' | head -1");
     const match = sensors.match(/\+(\d+\.?\d*)/);
     if (match) {
@@ -142,9 +139,42 @@ function getUptime(): { seconds: number; formatted: string } {
   return { seconds, formatted: formatted.trim() };
 }
 
+// Récupérer les métriques depuis Prometheus si disponible
+async function getPrometheusMetrics() {
+  const prometheus = getPrometheusClient();
+  if (!prometheus) return null;
+  
+  try {
+    const isHealthy = await prometheus.healthCheck();
+    if (!isHealthy) return null;
+    
+    const [cpuUsage, memoryUsage, gpuTemp, gpuUsage, diskUsage] = await Promise.all([
+      prometheus.queryScalar(JARVIS_METRICS.CPU_USAGE).catch(() => null),
+      prometheus.queryScalar(JARVIS_METRICS.MEMORY_USAGE_PERCENT).catch(() => null),
+      prometheus.queryScalar(JARVIS_METRICS.GPU_TEMPERATURE).catch(() => null),
+      prometheus.queryScalar(JARVIS_METRICS.GPU_UTILIZATION).catch(() => null),
+      prometheus.queryScalar(JARVIS_METRICS.DISK_USAGE_PERCENT).catch(() => null),
+    ]);
+    
+    return {
+      source: 'prometheus' as const,
+      cpu: cpuUsage !== null ? Math.round(cpuUsage) : null,
+      memory: memoryUsage !== null ? Math.round(memoryUsage) : null,
+      gpuTemp: gpuTemp !== null ? Math.round(gpuTemp) : null,
+      gpuUsage: gpuUsage !== null ? Math.round(gpuUsage) : null,
+      disk: diskUsage !== null ? Math.round(diskUsage) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const hardwareRouter = router({
   getMetrics: publicProcedure.query(async () => {
-    // Read system info
+    // Essayer Prometheus d'abord
+    const prometheusMetrics = await getPrometheusMetrics();
+    
+    // Fallback vers les métriques locales
     const [meminfo, cpustat, diskInfo, networkInfo, cpuTemp] = await Promise.all([
       safeExec("cat /proc/meminfo"),
       safeExec("cat /proc/stat"),
@@ -158,7 +188,6 @@ export const hardwareRouter = router({
     const loadAvg = getLoadAverage();
     const uptime = getUptime();
     
-    // System info
     const cpuCount = os.cpus().length;
     const cpuModel = os.cpus()[0]?.model || "Unknown CPU";
     const hostname = os.hostname();
@@ -167,6 +196,8 @@ export const hardwareRouter = router({
     
     return {
       timestamp: new Date().toISOString(),
+      source: prometheusMetrics?.source || 'local',
+      prometheusConnected: prometheusMetrics !== null,
       system: {
         hostname,
         platform,
@@ -176,7 +207,7 @@ export const hardwareRouter = router({
         uptime,
       },
       cpu: {
-        usage: cpuUsage,
+        usage: prometheusMetrics?.cpu ?? cpuUsage,
         temperature: cpuTemp,
         loadAverage: loadAvg,
       },
@@ -184,81 +215,128 @@ export const hardwareRouter = router({
         total: memory.total,
         used: memory.used,
         free: memory.free,
-        usagePercent: memory.total > 0 ? Math.round((memory.used / memory.total) * 100) : 0,
+        usagePercent: prometheusMetrics?.memory ?? (memory.total > 0 ? Math.round((memory.used / memory.total) * 100) : 0),
       },
-      disk: diskInfo,
+      disk: {
+        ...diskInfo,
+        percent: prometheusMetrics?.disk ?? diskInfo.percent,
+      },
       network: networkInfo,
-      // Simulated GPU data for DGX Spark / Jetson Thor (would use nvidia-smi in production)
       gpu: {
-        available: false,
-        name: "Simulated GPU",
-        temperature: null,
-        usage: null,
+        available: prometheusMetrics?.gpuTemp !== null || prometheusMetrics?.gpuUsage !== null,
+        name: "NVIDIA GPU",
+        temperature: prometheusMetrics?.gpuTemp ?? null,
+        usage: prometheusMetrics?.gpuUsage ?? null,
         memoryUsed: null,
         memoryTotal: null,
       },
     };
   }),
 
-  // Simulated metrics for DGX Spark node
+  // Vérifier le statut de Prometheus
+  getPrometheusStatus: publicProcedure.query(async () => {
+    const prometheus = getPrometheusClient();
+    if (!prometheus) {
+      return {
+        configured: false,
+        connected: false,
+        url: null,
+        error: 'PROMETHEUS_URL non configuré',
+      };
+    }
+    
+    try {
+      const isHealthy = await prometheus.healthCheck();
+      return {
+        configured: true,
+        connected: isHealthy,
+        url: process.env.PROMETHEUS_URL,
+        error: isHealthy ? null : 'Prometheus ne répond pas',
+      };
+    } catch (error) {
+      return {
+        configured: true,
+        connected: false,
+        url: process.env.PROMETHEUS_URL,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+      };
+    }
+  }),
+
+  // Métriques DGX Spark (avec Prometheus si disponible)
   getDgxSparkMetrics: publicProcedure.query(async () => {
-    // In production, this would SSH to the DGX Spark or use an agent
+    const prometheus = getPrometheusClient();
+    let prometheusData = null;
+    
+    if (prometheus) {
+      try {
+        const [cpuUsage, memUsage, gpuTemp, gpuUsage] = await Promise.all([
+          prometheus.queryScalar(JARVIS_METRICS.CPU_USAGE),
+          prometheus.queryScalar(JARVIS_METRICS.MEMORY_USAGE_PERCENT),
+          prometheus.queryScalar(JARVIS_METRICS.GPU_TEMPERATURE),
+          prometheus.queryScalar(JARVIS_METRICS.GPU_UTILIZATION),
+        ]);
+        
+        prometheusData = { cpuUsage, memUsage, gpuTemp, gpuUsage };
+      } catch {}
+    }
+    
     return {
       node: "DGX Spark (Orchestrator N2)",
-      status: "simulated",
+      status: prometheusData ? 'connected' : 'simulated',
+      source: prometheusData ? 'prometheus' : 'simulation',
       cpu: {
         model: "AMD EPYC 7742 64-Core",
         cores: 128,
-        usage: Math.round(Math.random() * 30 + 10), // 10-40%
-        temperature: Math.round(Math.random() * 15 + 45), // 45-60°C
+        usage: prometheusData?.cpuUsage ?? Math.round(Math.random() * 30 + 10),
+        temperature: Math.round(Math.random() * 15 + 45),
       },
       memory: {
-        total: 1024 * 1024 * 1024 * 1024, // 1TB
-        used: Math.round(Math.random() * 200 + 100) * 1024 * 1024 * 1024, // 100-300GB
-        usagePercent: Math.round(Math.random() * 20 + 10), // 10-30%
+        total: 1024 * 1024 * 1024 * 1024,
+        used: Math.round(Math.random() * 200 + 100) * 1024 * 1024 * 1024,
+        usagePercent: prometheusData?.memUsage ?? Math.round(Math.random() * 20 + 10),
       },
       gpu: {
         model: "NVIDIA A100 80GB",
         count: 8,
-        usage: Math.round(Math.random() * 40 + 20), // 20-60%
-        temperature: Math.round(Math.random() * 20 + 50), // 50-70°C
-        memoryUsed: Math.round(Math.random() * 30 + 10), // 10-40GB per GPU
+        usage: prometheusData?.gpuUsage ?? Math.round(Math.random() * 40 + 20),
+        temperature: prometheusData?.gpuTemp ?? Math.round(Math.random() * 20 + 50),
+        memoryUsed: Math.round(Math.random() * 30 + 10),
         memoryTotal: 80,
       },
       storage: {
         nvme: {
-          total: 15 * 1024 * 1024 * 1024 * 1024, // 15TB
-          used: Math.round(Math.random() * 5 + 2) * 1024 * 1024 * 1024 * 1024, // 2-7TB
+          total: 15 * 1024 * 1024 * 1024 * 1024,
+          used: Math.round(Math.random() * 5 + 2) * 1024 * 1024 * 1024 * 1024,
           health: "GOOD",
         },
       },
     };
   }),
 
-  // Simulated metrics for Jetson Thor node
+  // Métriques Jetson Thor
   getJetsonThorMetrics: publicProcedure.query(async () => {
-    // In production, this would query the Jetson Thor via API
     return {
       node: "Jetson Thor (Reflex N0)",
       status: "simulated",
       soc: {
         model: "NVIDIA Thor SoC",
-        usage: Math.round(Math.random() * 50 + 30), // 30-80%
-        temperature: Math.round(Math.random() * 15 + 55), // 55-70°C
+        usage: Math.round(Math.random() * 50 + 30),
+        temperature: Math.round(Math.random() * 15 + 55),
       },
       memory: {
-        total: 128 * 1024 * 1024 * 1024, // 128GB unified
-        used: Math.round(Math.random() * 40 + 20) * 1024 * 1024 * 1024, // 20-60GB
-        usagePercent: Math.round(Math.random() * 30 + 20), // 20-50%
+        total: 128 * 1024 * 1024 * 1024,
+        used: Math.round(Math.random() * 40 + 20) * 1024 * 1024 * 1024,
+        usagePercent: Math.round(Math.random() * 30 + 20),
       },
       gpu: {
         model: "Blackwell GPU (integrated)",
-        usage: Math.round(Math.random() * 60 + 30), // 30-90%
-        temperature: Math.round(Math.random() * 15 + 60), // 60-75°C
+        usage: Math.round(Math.random() * 60 + 30),
+        temperature: Math.round(Math.random() * 15 + 60),
       },
       latency: {
-        reflexLoop: Math.round(Math.random() * 20 + 35), // 35-55ms
-        visionPipeline: Math.round(Math.random() * 10 + 15), // 15-25ms
+        reflexLoop: Math.round(Math.random() * 20 + 35),
+        visionPipeline: Math.round(Math.random() * 10 + 15),
       },
       camera: {
         status: "active",
@@ -268,38 +346,38 @@ export const hardwareRouter = router({
     };
   }),
 
-  // Infrastructure metrics (UPS, Network, etc.)
+  // Infrastructure metrics
   getInfrastructureMetrics: publicProcedure.query(async () => {
     return {
       ups: {
         model: "APC Smart-UPS 3000VA",
         status: "online",
-        batteryPercent: Math.round(Math.random() * 10 + 90), // 90-100%
-        loadPercent: Math.round(Math.random() * 20 + 40), // 40-60%
-        runtimeMinutes: Math.round(Math.random() * 30 + 60), // 60-90 min
-        inputVoltage: Math.round(Math.random() * 10 + 225), // 225-235V
+        batteryPercent: Math.round(Math.random() * 10 + 90),
+        loadPercent: Math.round(Math.random() * 20 + 40),
+        runtimeMinutes: Math.round(Math.random() * 30 + 60),
+        inputVoltage: Math.round(Math.random() * 10 + 225),
       },
       network: {
         firewall: {
           model: "pfSense",
           status: "active",
-          throughput: Math.round(Math.random() * 500 + 100), // 100-600 Mbps
+          throughput: Math.round(Math.random() * 500 + 100),
         },
         switch: {
           model: "Cisco SG350-28P",
           ports: 28,
-          activeConnections: Math.round(Math.random() * 10 + 5), // 5-15
+          activeConnections: Math.round(Math.random() * 10 + 5),
         },
         latency: {
-          internal: Math.round(Math.random() * 2 + 0.5), // 0.5-2.5ms
-          external: Math.round(Math.random() * 20 + 10), // 10-30ms
+          internal: Math.round(Math.random() * 2 + 0.5),
+          external: Math.round(Math.random() * 20 + 10),
         },
       },
       storage: {
         nas: {
           model: "Synology DS920+",
           status: "healthy",
-          usedPercent: Math.round(Math.random() * 30 + 40), // 40-70%
+          usedPercent: Math.round(Math.random() * 30 + 40),
           raidStatus: "RAID 5 - Optimal",
         },
       },

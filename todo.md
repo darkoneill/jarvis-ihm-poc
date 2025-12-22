@@ -174,9 +174,9 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-012 : Documentation accès local-first
 - [x] IHM-013 : Documentation intégration Jarvis Core
 - [ ] IHM-020 : Tests E2E Browser (Playwright)
-- [ ] IHM-030 : Créer PrometheusClient helper
-- [ ] IHM-031 : Connecter HardwareDashboard à Prometheus
-- [ ] IHM-040 : Créer Redis Pub/Sub subscriber
+- [x] IHM-030 : PrometheusClient helper créé
+- [x] IHM-031 : HardwareDashboard connecté à Prometheus
+- [x] IHM-040 : Redis Pub/Sub subscriber créé
 - [ ] IHM-050 : Synchroniser tâches avec Redis Core
 - [ ] IHM-060 : Remplacer LLM Forge par API N2
 
@@ -188,3 +188,11 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] Documenter configuration accès local-first (docs/IHM_LOCAL_ACCESS.md)
 - [x] Préparer intégration Jarvis Core (docs/IHM_JARVIS_CORE_INTEGRATION.md)
 - [x] Mise à jour GitHub (CHANGELOG, README, STATUS, docs/README)
+
+## Phase 15 - Intégration Prometheus et Redis (COMPLETED)
+- [x] IHM-030 : PrometheusClient helper créé (server/_core/prometheus.ts)
+- [x] IHM-031 : HardwareDashboard connecté à Prometheus (avec fallback local)
+- [x] IHM-040 : Redis Pub/Sub subscriber créé (server/_core/redis.ts)
+- [x] IHM-041 : Logs N0/N1/N2 affichés en temps réel (LogViewer connecté tRPC)
+- [x] Test création de tâche depuis le Dialogue : SUCCÈS
+- [x] Mise à jour docs/STATUS.md sur GitHub
