@@ -67,6 +67,28 @@ export function ChatInterface() {
             charIndex++;
           } else {
             clearInterval(interval);
+            
+            // Notify if task was created
+            if (data.createdTask) {
+              toast.success("Tâche créée", {
+                description: `"${data.createdTask.title}" ajoutée au Kanban`,
+                action: {
+                  label: "Voir",
+                  onClick: () => window.location.href = "/tasks"
+                }
+              });
+            }
+            
+            // Notify if job was created
+            if (data.createdJob) {
+              toast.success("Job planifié", {
+                description: `"${data.createdJob.name}" ajouté au calendrier`,
+                action: {
+                  label: "Voir",
+                  onClick: () => window.location.href = "/calendar"
+                }
+              });
+            }
           }
         }, 10); // Fast streaming effect
       } else {

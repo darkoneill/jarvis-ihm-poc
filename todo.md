@@ -169,7 +169,22 @@ L'IHM est une interface de supervision, pas l'outil principal.
 
 ## Prochaines Étapes
 
-- [ ] IHM-010 : Création tâche depuis Dialogue
-- [ ] IHM-011 : Ajout tâche au calendrier depuis Dialogue
-- [ ] IHM-012 : Configuration accès local-first
+- [x] IHM-010 : Création tâche depuis Dialogue
+- [x] IHM-011 : Ajout job au calendrier depuis Dialogue
+- [x] IHM-012 : Documentation accès local-first
+- [x] IHM-013 : Documentation intégration Jarvis Core
 - [ ] IHM-020 : Tests E2E Browser (Playwright)
+- [ ] IHM-030 : Créer PrometheusClient helper
+- [ ] IHM-031 : Connecter HardwareDashboard à Prometheus
+- [ ] IHM-040 : Créer Redis Pub/Sub subscriber
+- [ ] IHM-050 : Synchroniser tâches avec Redis Core
+- [ ] IHM-060 : Remplacer LLM Forge par API N2
+
+## Phase 14 - Intégration et Documentation (COMPLETED)
+- [x] Fusionner IHM_STATUS.md dans docs/STATUS.md (section IHM)
+- [x] Supprimer docs/IHM_STATUS.md (fichier séparé)
+- [x] Implémenter création de tâche depuis le Dialogue ("rappelle-moi de...", "ajoute une tâche...")
+- [x] Implémenter ajout job au calendrier depuis le Dialogue ("planifie", "programme")
+- [x] Documenter configuration accès local-first (docs/IHM_LOCAL_ACCESS.md)
+- [x] Préparer intégration Jarvis Core (docs/IHM_JARVIS_CORE_INTEGRATION.md)
+- [x] Mise à jour GitHub (CHANGELOG, README, STATUS, docs/README)
