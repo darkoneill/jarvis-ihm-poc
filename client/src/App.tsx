@@ -19,6 +19,8 @@ import { KnowledgeBase } from "./components/KnowledgeBase";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { DashboardLayout } from "./components/DashboardLayout";
 import SettingsPage from "./pages/SettingsPage";
+import DashboardPage from "./pages/DashboardPage";
+import PluginsPage from "./pages/PluginsPage";
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -101,6 +103,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SettingsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <DashboardPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/plugins">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <PluginsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

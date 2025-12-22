@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { Bot, Download, Loader2, Paperclip, RefreshCw, Send, User } from "lucide-react";
 import { useChatExport } from "./ExportButton";
 import { VoiceButton } from "./VoiceButton";
+import { ConversationHistory } from "./ConversationHistory";
 import { useSubmitShortcut } from "@/hooks/useKeyboardShortcuts";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -187,6 +188,15 @@ export function ChatInterface() {
           </div>
         </div>
         <div className="flex gap-2">
+          <ConversationHistory
+            onSelectConversation={(id) => {
+              toast.info(`Chargement de la conversation #${id}`);
+              // TODO: Load conversation from DB
+            }}
+            onNewConversation={() => {
+              handleClearHistory();
+            }}
+          />
           <Button 
             variant="ghost" 
             size="sm" 

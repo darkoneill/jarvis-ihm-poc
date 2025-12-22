@@ -1,0 +1,145 @@
+import { describe, it, expect, vi } from "vitest";
+
+// Mock the database
+vi.mock("../db", () => ({
+  getDb: vi.fn(() => null),
+}));
+
+describe("Conversations Router", () => {
+  describe("list", () => {
+    it("should return mock conversations when db is not available", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.list();
+      
+      expect(result).toHaveProperty("conversations");
+      expect(result).toHaveProperty("total");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+      expect(Array.isArray(result.conversations)).toBe(true);
+    });
+
+    it("should include conversation properties", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.list();
+      
+      if (result.conversations.length > 0) {
+        const conv = result.conversations[0];
+        expect(conv).toHaveProperty("id");
+        expect(conv).toHaveProperty("title");
+        expect(conv).toHaveProperty("messageCount");
+        expect(conv).toHaveProperty("archived");
+      }
+    });
+  });
+
+  describe("get", () => {
+    it("should return a single conversation with messages", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.get({ id: 1 });
+      
+      expect(result).toHaveProperty("conversation");
+      expect(result).toHaveProperty("messages");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+
+    it("should include message properties", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.get({ id: 1 });
+      
+      if (result.messages.length > 0) {
+        const msg = result.messages[0];
+        expect(msg).toHaveProperty("id");
+        expect(msg).toHaveProperty("role");
+        expect(msg).toHaveProperty("content");
+        expect(msg).toHaveProperty("createdAt");
+      }
+    });
+  });
+
+  describe("create", () => {
+    it("should create a new conversation in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.create({ title: "Test Conversation" });
+      
+      expect(result).toHaveProperty("id");
+      expect(result).toHaveProperty("title");
+      expect(result.title).toBe("Test Conversation");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("addMessage", () => {
+    it("should add a message in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.addMessage({
+        conversationId: 1,
+        role: "user",
+        content: "Hello Jarvis!",
+      });
+      
+      expect(result).toHaveProperty("id");
+      expect(result).toHaveProperty("conversationId");
+      expect(result).toHaveProperty("role");
+      expect(result.role).toBe("user");
+      expect(result).toHaveProperty("content");
+      expect(result.content).toBe("Hello Jarvis!");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("update", () => {
+    it("should update a conversation in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.update({ id: 1, title: "Updated Title" });
+      
+      expect(result).toHaveProperty("success");
+      expect(result.success).toBe(true);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("delete", () => {
+    it("should delete a conversation in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.delete({ id: 1 });
+      
+      expect(result).toHaveProperty("success");
+      expect(result.success).toBe(true);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("search", () => {
+    it("should search conversations in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.search({ query: "test" });
+      
+      expect(result).toHaveProperty("results");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+});

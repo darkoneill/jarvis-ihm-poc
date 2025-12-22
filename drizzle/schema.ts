@@ -120,3 +120,80 @@ export const userPreferences = mysqlTable("user_preferences", {
 
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+
+/**
+ * Dashboard configuration table for widget layout
+ */
+export const dashboardConfigs = mysqlTable("dashboard_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  widgets: json("widgets").$type<{
+    id: string;
+    type: string;
+    title: string;
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+    config: Record<string, unknown>;
+    visible: boolean;
+  }[]>().notNull(),
+  layout: mysqlEnum("layout", ["grid", "freeform"]).default("grid").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DashboardConfig = typeof dashboardConfigs.$inferSelect;
+export type InsertDashboardConfig = typeof dashboardConfigs.$inferInsert;
+
+/**
+ * Conversations table for chat history
+ */
+export const conversations = mysqlTable("conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  summary: text("summary"),
+  messageCount: int("messageCount").default(0).notNull(),
+  lastMessageAt: timestamp("lastMessageAt"),
+  archived: boolean("archived").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+/**
+ * Messages table for conversation messages
+ */
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  content: text("content").notNull(),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
+/**
+ * Plugins table for managing installed plugins
+ */
+export const plugins = mysqlTable("plugins", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  description: text("description"),
+  version: varchar("version", { length: 50 }).notNull(),
+  author: varchar("author", { length: 255 }),
+  icon: varchar("icon", { length: 100 }),
+  category: mysqlEnum("category", ["iot", "sensors", "automation", "integration", "utility", "other"]).default("other").notNull(),
+  config: json("config").$type<Record<string, unknown>>(),
+  enabled: boolean("enabled").default(false).notNull(),
+  installedAt: timestamp("installedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Plugin = typeof plugins.$inferSelect;
+export type InsertPlugin = typeof plugins.$inferInsert;

@@ -79,3 +79,15 @@
 - [x] Indicateur de statut de connexion (ConnectionStatus)
 - [x] Dialogue d'aide pour les raccourcis clavier
 - [x] Tests unitaires (81 tests passés)
+
+## Phase 9 - Dashboard Personnalisable, Historique et Plugins (COMPLETED)
+- [x] Tableau de bord personnalisable avec 10 types de widgets
+- [x] Drag & drop pour réorganiser les widgets (@dnd-kit)
+- [x] Sauvegarde de la configuration du dashboard en DB
+- [x] Historique des conversations en base de données
+- [x] Interface de recherche dans l'historique
+- [x] Reprise des conversations précédentes
+- [x] Architecture de système de plugins modulaire
+- [x] 8 plugins disponibles (MQTT, Zigbee, Home Assistant, Telegram, etc.)
+- [x] Interface de gestion des plugins avec marketplace
+- [x] Tests unitaires (108 tests passés)

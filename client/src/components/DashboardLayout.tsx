@@ -17,10 +17,12 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Cpu,
   FileText,
   LayoutDashboard,
   Library,
   LogOut,
+  Plug,
   Settings,
   User,
   Workflow,
@@ -47,12 +49,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navItems = [
     { icon: Bot, label: "Dialogue", href: "/" },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: FileText, label: "Logs", href: "/logs" },
-    { icon: LayoutDashboard, label: "Tâches", href: "/tasks" },
-    { icon: Activity, label: "Hardware", href: "/hardware" },
+    { icon: Activity, label: "Tâches", href: "/tasks" },
+    { icon: Cpu, label: "Hardware", href: "/hardware" },
     { icon: Calendar, label: "Calendrier", href: "/calendar" },
     { icon: Library, label: "Connaissances", href: "/knowledge" },
     { icon: Workflow, label: "Workflows", href: "/workflows" },
+    { icon: Plug, label: "Plugins", href: "/plugins" },
   ];
 
   // Get user initials for avatar
