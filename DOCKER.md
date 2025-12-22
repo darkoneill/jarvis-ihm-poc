@@ -18,24 +18,36 @@ Guide complet pour déployer l'IHM Jarvis avec Docker.
 git clone https://github.com/darkoneill/HugiMunr-test.git
 cd HugiMunr-test/ihm
 
-# 2. Copier et configurer l'environnement
+# 2. Générer les certificats SSL (première fois uniquement)
+./docker/nginx/generate-ssl.sh
+
+# 3. Copier et configurer l'environnement
 cp docker/docker.env.example docker.env
 # Éditer docker.env selon vos besoins
 
-# 3. Lancer les services
+# 4. Lancer les services
 docker-compose up -d
 
-# 4. Vérifier le statut
+# 5. Vérifier le statut
 docker-compose ps
+
+# 6. Attendre le téléchargement du modèle Ollama (première fois)
+docker-compose logs -f ollama-pull
 ```
 
-L'IHM sera accessible sur `http://localhost:3000`.
+L'IHM sera accessible sur :
+- **HTTP** : `http://localhost` (redirige vers HTTPS)
+- **HTTPS** : `https://localhost` ou `https://jarvis.local`
+
+> **Note** : Le certificat est auto-signé, votre navigateur affichera un avertissement de sécurité.
 
 ## Services Inclus
 
 | Service | Port | Description |
 |---------|------|-------------|
-| jarvis-ihm | 3000 | Application IHM |
+| nginx | 80, 443 | Reverse proxy HTTPS |
+| jarvis-ihm | 3000 (interne) | Application IHM |
+| ollama | 11434 | LLM local (llama3.2:3b) |
 | mysql | 3306 | Base de données MySQL 8.0 |
 | redis | 6379 | Cache et Pub/Sub pour logs |
 
@@ -175,3 +187,63 @@ Pour un déploiement en production, modifier les valeurs suivantes :
 3. **Activer HTTPS** : Utiliser un reverse proxy (nginx, traefik) avec certificat SSL
 
 4. **Sauvegardes automatiques** : Configurer un cron job pour les backups
+
+
+## Configuration Ollama
+
+### Modèle par défaut
+
+Le modèle `llama3.2:3b` est téléchargé automatiquement au premier démarrage. Pour utiliser un autre modèle :
+
+```bash
+# Télécharger un modèle
+docker exec -it jarvis-ollama ollama pull mistral:7b
+
+# Lister les modèles disponibles
+docker exec -it jarvis-ollama ollama list
+```
+
+### Modèles recommandés
+
+| Modèle | Taille | RAM requise | Description |
+|--------|--------|-------------|-------------|
+| llama3.2:3b | 2 Go | 4 Go | Rapide, bon pour les tâches simples |
+| llama3.2:8b | 4.7 Go | 8 Go | Équilibré, recommandé |
+| mistral:7b | 4 Go | 8 Go | Excellent pour le français |
+| codellama:7b | 4 Go | 8 Go | Spécialisé code |
+
+### Support GPU (NVIDIA)
+
+Pour activer le GPU, décommenter la section `deploy` dans `docker-compose.yml` :
+
+```yaml
+ollama:
+  # ...
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+```
+
+Prérequis : NVIDIA Container Toolkit installé.
+
+## Accès via jarvis.local
+
+Pour accéder à l'IHM via `https://jarvis.local` :
+
+### Linux/macOS
+
+Ajouter dans `/etc/hosts` :
+```
+127.0.0.1 jarvis.local
+```
+
+### Windows
+
+Ajouter dans `C:\Windows\System32\drivers\etc\hosts` :
+```
+127.0.0.1 jarvis.local
+```

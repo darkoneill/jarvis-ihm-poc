@@ -411,3 +411,12 @@ Tous les tickets IHM jusqu'à v5.9.21 sont complétés. Les fonctionnalités sui
 - [x] Créer le script d'initialisation de la base de données
 - [x] Créer DOCKER.md avec documentation complète
 - [x] Pousser sur GitHub
+
+
+## Phase 32 - Stack 100% Local (Ollama + Nginx) (COMPLETED)
+- [x] Ajouter service Ollama au docker-compose
+- [x] Configurer le téléchargement automatique des modèles (llama3.2:3b)
+- [x] Ajouter nginx reverse proxy avec HTTPS
+- [x] Générer certificats auto-signés (generate-ssl.sh)
+- [x] Mettre à jour la documentation DOCKER.md
+- [x] Pousser sur GitHub
