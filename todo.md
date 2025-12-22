@@ -278,3 +278,11 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-112 : Affichage du modèle utilisé
 - [x] Tests unitaires (177 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.14, STATUS.md)
+
+
+## Phase 22 - Backend LLM Dynamique et Raccourci Clavier (COMPLETED)
+- [x] IHM-113 : Modifier chat.sendMessage pour utiliser llmConfig dynamique
+- [x] IHM-114 : Router les requêtes vers le bon provider LLM (llmRouter.ts)
+- [x] IHM-115 : Raccourci clavier Ctrl+L pour config LLM
+- [x] Tests unitaires (200 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.15, STATUS.md)

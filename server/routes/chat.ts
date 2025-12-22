@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { invokeLLM, Message } from "../_core/llm";
+import { routeLLMRequest, ActiveLLMConfig } from "../_core/llmRouter";
 import { getDb } from "../db";
-import { tasks, scheduledJobs, InsertTask, InsertScheduledJob } from "../../drizzle/schema";
+import { tasks, scheduledJobs, llmConfigs, InsertTask, InsertScheduledJob } from "../../drizzle/schema";
 import { chatWithN2, getN2ClientStatus } from "../_core/n2Client";
 
 // System prompt for Jarvis AI assistant
@@ -79,7 +81,7 @@ export const chatRouter = router({
       message: z.string().min(1),
       sessionId: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const sessionId = input.sessionId || "default";
       
       // Get or initialize conversation history
@@ -102,28 +104,59 @@ export const chatRouter = router({
       try {
         let assistantMessage: string | undefined;
         
-        // Try N2 first (100% local), fallback to Forge
-        const n2Status = getN2ClientStatus();
-        if (n2Status.enabled && n2Status.available) {
-          console.log('[Chat] Using N2 Supervisor (local)');
-          const n2Response = await chatWithN2(input.message, {
-            history: history.filter(m => m.role !== 'system').map(m => ({
-              role: m.role as 'user' | 'assistant',
-              content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-            })),
-          });
+        // Get user's LLM configuration from database
+        let llmConfig: ActiveLLMConfig = {
+          provider: "forge",
+          fallbackEnabled: true,
+          fallbackProvider: "forge",
+        };
+        
+        const db = await getDb();
+        if (db && ctx.user) {
+          const userConfig = await db.select()
+            .from(llmConfigs)
+            .where(eq(llmConfigs.userId, ctx.user.id))
+            .limit(1);
           
-          if (n2Response?.success) {
-            assistantMessage = n2Response.message;
+          if (userConfig[0]) {
+            llmConfig = {
+              provider: userConfig[0].provider as ActiveLLMConfig["provider"],
+              apiUrl: userConfig[0].apiUrl,
+              apiKey: userConfig[0].apiKey,
+              model: userConfig[0].model,
+              temperature: (userConfig[0].temperature || 70) / 100,
+              maxTokens: userConfig[0].maxTokens || 4096,
+              timeout: userConfig[0].timeout || 30000,
+              streamEnabled: userConfig[0].streamEnabled ?? true,
+              fallbackEnabled: userConfig[0].fallbackEnabled ?? true,
+              fallbackProvider: (userConfig[0].fallbackProvider || "forge") as ActiveLLMConfig["provider"],
+            };
           }
         }
         
-        // Fallback to Forge API if N2 not available or failed
+        console.log(`[Chat] Using LLM provider: ${llmConfig.provider}`);
+        
+        // Special handling for N2 provider with legacy N2 client
+        if (llmConfig.provider === "n2") {
+          const n2Status = getN2ClientStatus();
+          if (n2Status.enabled && n2Status.available) {
+            console.log('[Chat] Using N2 Supervisor (local)');
+            const n2Response = await chatWithN2(input.message, {
+              history: history.filter(m => m.role !== 'system').map(m => ({
+                role: m.role as 'user' | 'assistant',
+                content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+              })),
+            });
+            
+            if (n2Response?.success) {
+              assistantMessage = n2Response.message;
+            }
+          }
+        }
+        
+        // Use LLM router for other providers or as fallback
         if (!assistantMessage) {
-          console.log('[Chat] Using Forge API (fallback)');
-          const response = await invokeLLM({
-            messages: history,
-          });
+          const response = await routeLLMRequest(llmConfig, history);
           const content = response.choices[0]?.message?.content;
           assistantMessage = typeof content === 'string' ? content : undefined;
         }

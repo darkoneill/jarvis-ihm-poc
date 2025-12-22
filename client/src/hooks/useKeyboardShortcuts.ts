@@ -48,6 +48,13 @@ const createDefaultShortcuts = (
     global: true,
   },
   {
+    key: "l",
+    ctrl: true,
+    action: () => navigate("/settings/llm"),
+    description: "Configuration LLM",
+    global: true,
+  },
+  {
     key: "m",
     ctrl: true,
     action: () => callbacks.onVoice?.(),

@@ -1,11 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock the LLM
+// Mock the LLM router
+vi.mock("../_core/llmRouter", () => ({
+  routeLLMRequest: vi.fn(),
+}));
+
+// Mock the legacy LLM
 vi.mock("../_core/llm", () => ({
   invokeLLM: vi.fn(),
 }));
 
-import { invokeLLM } from "../_core/llm";
+// Mock the N2 client
+vi.mock("../_core/n2Client", () => ({
+  chatWithN2: vi.fn(),
+  getN2ClientStatus: vi.fn(() => ({ enabled: false, available: false })),
+}));
+
+// Mock the database
+vi.mock("../db", () => ({
+  getDb: vi.fn(() => Promise.resolve(null)),
+}));
+
+import { routeLLMRequest } from "../_core/llmRouter";
 
 describe("Chat Router", () => {
   beforeEach(() => {
@@ -14,7 +30,7 @@ describe("Chat Router", () => {
 
   describe("sendMessage", () => {
     it("should return a response from the LLM", async () => {
-      vi.mocked(invokeLLM).mockResolvedValue({
+      vi.mocked(routeLLMRequest).mockResolvedValue({
         id: "test-id",
         created: Date.now(),
         model: "gemini-2.5-flash",
@@ -29,27 +45,27 @@ describe("Chat Router", () => {
       });
       
       const { chatRouter } = await import("./chat");
-      const caller = chatRouter.createCaller({} as any);
+      const caller = chatRouter.createCaller({ user: null } as any);
       
       const result = await caller.sendMessage({
         message: "Bonjour",
-        sessionId: "test-session",
+        sessionId: "test-session-llm",
       });
       
       expect(result.success).toBe(true);
       expect(result.response).toBe("Bonjour ! Je suis Jarvis.");
-      expect(invokeLLM).toHaveBeenCalled();
+      expect(routeLLMRequest).toHaveBeenCalled();
     });
 
     it("should return error response when LLM fails", async () => {
-      vi.mocked(invokeLLM).mockRejectedValue(new Error("LLM Error"));
+      vi.mocked(routeLLMRequest).mockRejectedValue(new Error("LLM Error"));
       
       const { chatRouter } = await import("./chat");
-      const caller = chatRouter.createCaller({} as any);
+      const caller = chatRouter.createCaller({ user: null } as any);
       
       const result = await caller.sendMessage({
         message: "Test",
-        sessionId: "test-session-error",
+        sessionId: "test-session-error-new",
       });
       
       expect(result.success).toBe(false);
@@ -60,7 +76,7 @@ describe("Chat Router", () => {
   describe("clearHistory", () => {
     it("should clear conversation history", async () => {
       const { chatRouter } = await import("./chat");
-      const caller = chatRouter.createCaller({} as any);
+      const caller = chatRouter.createCaller({ user: null } as any);
       
       const result = await caller.clearHistory({ sessionId: "test-session" });
       
@@ -71,7 +87,7 @@ describe("Chat Router", () => {
   describe("getHistory", () => {
     it("should return empty array for new session", async () => {
       const { chatRouter } = await import("./chat");
-      const caller = chatRouter.createCaller({} as any);
+      const caller = chatRouter.createCaller({ user: null } as any);
       
       const result = await caller.getHistory({ sessionId: "new-session" });
       

@@ -491,6 +491,10 @@ export default function SettingsPage() {
                   <kbd className="px-2 py-1 bg-background border rounded text-xs font-mono">Ctrl + ,</kbd>
                 </div>
                 <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <span className="text-muted-foreground">Configuration LLM</span>
+                  <kbd className="px-2 py-1 bg-background border rounded text-xs font-mono">Ctrl + L</kbd>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
                   <span className="text-muted-foreground">Commande vocale</span>
                   <kbd className="px-2 py-1 bg-background border rounded text-xs font-mono">Ctrl + M</kbd>
                 </div>
