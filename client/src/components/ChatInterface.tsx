@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { Bot, Cloud, Cpu, Download, Loader2, Paperclip, RefreshCw, Send, Server, Sparkles, User } from "lucide-react";
+import { Bot, Cloud, Cpu, Download, Loader2, Paperclip, RefreshCw, Send, Server, Sparkles, Square, User } from "lucide-react";
 import { useChatExport } from "./ExportButton";
 import { VoiceButton } from "./VoiceButton";
 import { ConversationHistory } from "./ConversationHistory";
@@ -31,7 +31,8 @@ export function ChatInterface() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [sessionId] = useState(() => `session-${Date.now()}`);
+  const [sessionId, setSessionId] = useState(() => `session-${Date.now()}`);
+  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [useStreaming, setUseStreaming] = useState(true);
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -177,6 +178,55 @@ export function ChatInterface() {
     },
   });
 
+  // Query to load a specific conversation
+  const getConversationQuery = trpc.conversations.get.useQuery(
+    { id: currentConversationId! },
+    { enabled: currentConversationId !== null }
+  );
+
+  // Effect to handle conversation loading
+  useEffect(() => {
+    if (getConversationQuery.data?.messages) {
+      const data = getConversationQuery.data;
+      const loadedMessages: Message[] = data.messages.map((msg: { id?: number; role: string; content: string; createdAt: Date }, index: number) => ({
+        id: `loaded-${msg.id || index}`,
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        timestamp: new Date(msg.createdAt),
+      }));
+      setMessages(loadedMessages);
+      toast.success(`Conversation "${data.conversation.title}" chargée`);
+    }
+  }, [getConversationQuery.data]);
+
+  // Effect to handle conversation loading error
+  useEffect(() => {
+    if (getConversationQuery.error) {
+      toast.error("Erreur lors du chargement de la conversation");
+      setCurrentConversationId(null);
+    }
+  }, [getConversationQuery.error]);
+
+  // Function to load a conversation
+  const handleLoadConversation = (id: number) => {
+    setCurrentConversationId(id);
+    setSessionId(`conversation-${id}`);
+  };
+
+  // Function to start a new conversation
+  const handleNewConversation = () => {
+    setCurrentConversationId(null);
+    setSessionId(`session-${Date.now()}`);
+    setMessages([
+      {
+        id: "1",
+        role: "assistant",
+        content: "Bonjour. Je suis Jarvis v5.9. Tous les systèmes sont opérationnels. Comment puis-je vous assister aujourd'hui ?",
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
@@ -247,6 +297,13 @@ export function ChatInterface() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Escape key to stop streaming
+    if (e.key === "Escape" && isStreaming) {
+      e.preventDefault();
+      abortStream();
+      toast.info("Génération arrêtée");
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -303,13 +360,9 @@ export function ChatInterface() {
         </div>
         <div className="flex gap-2">
           <ConversationHistory
-            onSelectConversation={(id) => {
-              toast.info(`Chargement de la conversation #${id}`);
-              // TODO: Load conversation from DB
-            }}
-            onNewConversation={() => {
-              handleClearHistory();
-            }}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleLoadConversation}
+            onNewConversation={handleNewConversation}
           />
           <Button 
             variant="ghost" 
@@ -440,14 +493,29 @@ export function ChatInterface() {
                disabled={isTyping}
                className="h-8 w-8"
              />
-             <Button 
-               size="icon" 
-               className="h-8 w-8" 
-               onClick={handleSendMessage}
-               disabled={!inputValue.trim() || isTyping}
-             >
-               <Send className="h-4 w-4" />
-             </Button>
+             {isStreaming ? (
+               <Button 
+                 size="icon" 
+                 variant="destructive"
+                 className="h-8 w-8" 
+                 onClick={() => {
+                   abortStream();
+                   toast.info("Génération arrêtée");
+                 }}
+                 title="Arrêter la génération (Echap)"
+               >
+                 <Square className="h-4 w-4" />
+               </Button>
+             ) : (
+               <Button 
+                 size="icon" 
+                 className="h-8 w-8" 
+                 onClick={handleSendMessage}
+                 disabled={!inputValue.trim() || isTyping}
+               >
+                 <Send className="h-4 w-4" />
+               </Button>
+             )}
           </div>
         </div>
         <div className="text-[10px] text-center text-muted-foreground mt-2 opacity-50">

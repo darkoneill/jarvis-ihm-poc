@@ -296,3 +296,13 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-120 : Endpoint /api/chat/stream avec sauvegarde automatique
 - [x] Tests unitaires (219 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.16, STATUS.md)
+
+
+## Phase 24 - Bouton Stop et Historique Conversations (COMPLETED)
+- [x] IHM-121 : Bouton Stop visible pendant le streaming
+- [x] IHM-122 : Annulation du stream via AbortController + raccourci Echap
+- [x] IHM-123 : Chargement des conversations depuis la DB
+- [x] IHM-124 : Reprise d'une conversation existante
+- [x] IHM-125 : Suppression de conversations (déjà implémenté)
+- [x] Tests unitaires (219 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.17, STATUS.md)
