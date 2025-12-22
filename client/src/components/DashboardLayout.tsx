@@ -1,0 +1,151 @@
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import {
+  Bot,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LayoutDashboard,
+  Library,
+  Settings,
+  Workflow
+} from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [location] = useLocation();
+
+  const navItems = [
+    { icon: Bot, label: "Dialogue", href: "/" },
+    { icon: FileText, label: "Logs", href: "/logs" },
+    { icon: LayoutDashboard, label: "Tâches", href: "/tasks" },
+    { icon: Calendar, label: "Calendrier", href: "/calendar" },
+    { icon: Library, label: "Connaissances", href: "/knowledge" },
+    { icon: Workflow, label: "Workflows", href: "/workflows" },
+  ];
+
+  return (
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "relative flex flex-col border-r border-border bg-sidebar transition-all duration-300 ease-in-out",
+          isCollapsed ? "w-[60px]" : "w-[240px]"
+        )}
+      >
+        {/* Logo Area */}
+        <div className="flex h-[60px] items-center justify-center border-b border-border">
+          <div className="flex items-center gap-2 font-bold text-xl text-primary">
+            <div className="h-8 w-8 rounded bg-primary/20 flex items-center justify-center text-primary border border-primary/50">
+              J
+            </div>
+            {!isCollapsed && <span className="tracking-widest">JARVIS</span>}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <ScrollArea className="flex-1 py-4">
+          <nav className="grid gap-1 px-2 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2">
+            {navItems.map((item, index) => {
+              const isActive = location === item.href;
+              return (
+                <Tooltip key={index} delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Link href={item.href}>
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start gap-3 mb-1",
+                          isCollapsed ? "justify-center px-2" : "px-4",
+                          isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-primary rounded-l-none"
+                        )}
+                      >
+                        <item.icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
+                        {!isCollapsed && <span>{item.label}</span>}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  {isCollapsed && (
+                    <TooltipContent side="right" className="flex items-center gap-4">
+                      {item.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              );
+            })}
+          </nav>
+        </ScrollArea>
+
+        {/* Footer / Settings */}
+        <div className="p-2 border-t border-border">
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3",
+                  isCollapsed ? "justify-center px-2" : "px-4"
+                )}
+              >
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                {!isCollapsed && <span>Paramètres</span>}
+              </Button>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right">Paramètres</TooltipContent>}
+          </Tooltip>
+        </div>
+
+        {/* Collapse Toggle */}
+        <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-20">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background/50 backdrop-blur-sm">
+        {/* Header (Optional, can be breadcrumbs or page title) */}
+        <header className="h-[60px] border-b border-border flex items-center px-6 justify-between bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+             <span className="font-mono text-xs uppercase tracking-wider text-primary/70">System Status:</span>
+             <span className="flex items-center gap-1.5 text-xs font-medium text-green-500">
+               <span className="relative flex h-2 w-2">
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+               </span>
+               ONLINE
+             </span>
+           </div>
+           <div className="font-mono text-xs text-muted-foreground opacity-50">
+             v5.9.0-alpha
+           </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
