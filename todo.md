@@ -225,3 +225,19 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [ ] IHM-092 : Guide VPN WireGuard
 - [ ] IHM-093 : Script de déploiement local
 - [ ] Validation sur DGX Spark avec N2 Supervisor actif
+
+## Phase 18 - Déploiement Local-First (COMPLETED)
+- [x] IHM-090 : Documentation mDNS/Avahi (jarvis.local)
+- [x] IHM-091 : Script de déploiement local avec systemd
+- [x] IHM-092 : Certificats HTTPS auto-signés (mkcert/OpenSSL)
+- [x] IHM-093 : Documentation activation N2 en production
+- [x] IHM-094 : Guide VPN WireGuard pour accès distant
+- [x] Mise à jour GitHub (CHANGELOG v5.9.11, STATUS.md, README.md)
+
+## Documents Créés
+
+| Document | Description |
+|----------|-------------|
+| `docs/IHM_DEPLOYMENT_LOCAL.md` | Guide complet de déploiement local |
+| `docs/IHM_N2_PRODUCTION.md` | Activation N2 Supervisor en production |
+| `docs/IHM_VPN_WIREGUARD.md` | Guide VPN WireGuard pour accès distant |
