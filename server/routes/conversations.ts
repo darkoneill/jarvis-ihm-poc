@@ -390,26 +390,77 @@ export const conversationsRouter = router({
           .map(m => `${m.role === 'user' ? 'Utilisateur' : 'Jarvis'}: ${m.content.substring(0, 200)}`)
           .join('\n');
 
-        // Generate summary using simple extraction (no LLM call to avoid complexity)
-        // Extract key topics from the conversation
-        const topics = new Set<string>();
-        const keywords = ['configuration', 'backup', 'monitoring', 'installation', 'erreur', 'problème', 
-                         'aide', 'comment', 'pourquoi', 'quand', 'système', 'fichier', 'données'];
-        
-        for (const msg of conversationMessages) {
-          const lowerContent = msg.content.toLowerCase();
-          for (const keyword of keywords) {
-            if (lowerContent.includes(keyword)) {
-              topics.add(keyword);
+        let summary: string;
+
+        try {
+          // Try to generate summary using LLM
+          const { routeLLMRequest } = await import("../_core/llmRouter");
+          const { llmConfigs, systemSettings } = await import("../../drizzle/schema");
+          
+          // Get active LLM config
+          let config = await db
+            .select()
+            .from(llmConfigs)
+            .where(eq(llmConfigs.userId, ctx.user.id))
+            .limit(1);
+          
+          const llmConfig = config[0] || { provider: "forge", model: "default" };
+          
+          const result = await routeLLMRequest(
+            {
+              provider: llmConfig.provider as "forge" | "ollama" | "openai" | "anthropic" | "n2",
+              apiUrl: llmConfig.apiUrl,
+              apiKey: llmConfig.apiKey,
+              model: llmConfig.model,
+              temperature: 0.3,
+              maxTokens: 150,
+              timeout: 15000,
+              fallbackEnabled: true,
+              fallbackProvider: "forge",
+            },
+            [
+              {
+                role: "system",
+                content: "Tu es un assistant qui résume des conversations. Génère un résumé concis de 2-3 phrases maximum en français. Concentre-toi sur les sujets principaux et les actions demandées.",
+              },
+              {
+                role: "user",
+                content: `Résume cette conversation en 2-3 phrases:\n\n${context}`,
+              },
+            ],
+            { maxTokens: 150, temperature: 0.3 }
+          );
+
+          const content = result.choices?.[0]?.message?.content;
+          summary = typeof content === "string" ? content : "";
+          
+          // Fallback to keyword extraction if LLM returns empty
+          if (!summary.trim()) {
+            throw new Error("Empty LLM response");
+          }
+        } catch (llmError) {
+          console.log("[Summary] LLM unavailable, using keyword extraction");
+          
+          // Fallback: Extract key topics from the conversation
+          const topics = new Set<string>();
+          const keywords = ['configuration', 'backup', 'monitoring', 'installation', 'erreur', 'problème', 
+                           'aide', 'comment', 'pourquoi', 'quand', 'système', 'fichier', 'données',
+                           'tâche', 'calendrier', 'planification', 'sécurité', 'réseau', 'gpu'];
+          
+          for (const msg of conversationMessages) {
+            const lowerContent = msg.content.toLowerCase();
+            for (const keyword of keywords) {
+              if (lowerContent.includes(keyword)) {
+                topics.add(keyword);
+              }
             }
           }
-        }
 
-        // Generate a simple summary
-        const topicList = Array.from(topics).slice(0, 3);
-        const summary = topicList.length > 0
-          ? `Discussion sur ${topicList.join(', ')}. ${conversationMessages.length} messages échangés.`
-          : `Conversation de ${conversationMessages.length} messages avec l'assistant Jarvis.`;
+          const topicList = Array.from(topics).slice(0, 3);
+          summary = topicList.length > 0
+            ? `Discussion sur ${topicList.join(', ')}. ${conversationMessages.length} messages échangés.`
+            : `Conversation de ${conversationMessages.length} messages avec l'assistant Jarvis.`;
+        }
 
         // Update conversation with summary
         await db
@@ -672,6 +723,185 @@ export const conversationsRouter = router({
       } catch (error) {
         console.error("Error searching conversations:", error);
         return { results: { conversations: [], messages: [] }, isSimulation: false };
+      }
+    }),
+
+  // Export all conversations (bulk export for sync)
+  exportAll: publicProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return {
+          exportDate: new Date().toISOString(),
+          version: "1.0",
+          conversations: [
+            {
+              conversation: {
+                id: 1,
+                title: "Conversation de démonstration",
+                summary: "Résumé de démo",
+                tags: ["demo"],
+                archived: false,
+                createdAt: new Date().toISOString(),
+              },
+              messages: [
+                { role: "user", content: "Bonjour", createdAt: new Date().toISOString() },
+                { role: "assistant", content: "Bonjour !", createdAt: new Date().toISOString() },
+              ],
+            },
+          ],
+          isSimulation: true,
+        };
+      }
+
+      try {
+        // Get all conversations for user
+        const allConversations = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id))
+          .orderBy(desc(conversations.createdAt));
+
+        // Get messages for each conversation
+        const exportData = [];
+        for (const conv of allConversations) {
+          const convMessages = await db
+            .select()
+            .from(messages)
+            .where(eq(messages.conversationId, conv.id))
+            .orderBy(messages.createdAt);
+
+          exportData.push({
+            conversation: {
+              id: conv.id,
+              title: conv.title,
+              summary: conv.summary,
+              tags: conv.tags,
+              archived: conv.archived,
+              createdAt: conv.createdAt?.toISOString(),
+            },
+            messages: convMessages.map(m => ({
+              role: m.role,
+              content: m.content,
+              createdAt: m.createdAt?.toISOString(),
+            })),
+          });
+        }
+
+        return {
+          exportDate: new Date().toISOString(),
+          version: "1.0",
+          userId: ctx.user.id,
+          conversations: exportData,
+          isSimulation: false,
+        };
+      } catch (error) {
+        console.error("Error exporting all conversations:", error);
+        throw new Error("Failed to export conversations");
+      }
+    }),
+
+  // Import all conversations (bulk import for sync)
+  importAll: publicProcedure
+    .input(z.object({
+      conversations: z.array(z.object({
+        conversation: z.object({
+          title: z.string(),
+          summary: z.string().optional().nullable(),
+          tags: z.array(z.string()).optional().nullable(),
+          archived: z.boolean().optional(),
+          createdAt: z.string().optional(),
+        }),
+        messages: z.array(z.object({
+          role: z.enum(["user", "assistant", "system"]),
+          content: z.string(),
+          createdAt: z.string().optional(),
+        })),
+      })),
+      mergeStrategy: z.enum(["skip", "replace", "merge"]).default("skip"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return {
+          imported: input.conversations.length,
+          skipped: 0,
+          replaced: 0,
+          isSimulation: true,
+        };
+      }
+
+      try {
+        let imported = 0;
+        let skipped = 0;
+        let replaced = 0;
+
+        for (const item of input.conversations) {
+          // Check if conversation with same title exists
+          const existing = await db
+            .select()
+            .from(conversations)
+            .where(
+              and(
+                eq(conversations.userId, ctx.user.id),
+                eq(conversations.title, item.conversation.title)
+              )
+            )
+            .limit(1);
+
+          if (existing.length > 0) {
+            if (input.mergeStrategy === "skip") {
+              skipped++;
+              continue;
+            } else if (input.mergeStrategy === "replace") {
+              // Delete existing conversation and its messages
+              await db.delete(messages).where(eq(messages.conversationId, existing[0].id));
+              await db.delete(conversations).where(eq(conversations.id, existing[0].id));
+              replaced++;
+            }
+            // For "merge", we just add as new conversation with modified title
+          }
+
+          // Create new conversation
+          const title = input.mergeStrategy === "merge" && existing.length > 0
+            ? `${item.conversation.title} (importé)`
+            : item.conversation.title;
+
+          const result = await db.insert(conversations).values({
+            userId: ctx.user.id,
+            title,
+            summary: item.conversation.summary,
+            tags: item.conversation.tags,
+            archived: item.conversation.archived || false,
+            messageCount: item.messages.length,
+            lastMessageAt: new Date(),
+          });
+
+          const conversationId = Number(result[0].insertId);
+
+          // Add messages
+          for (const msg of item.messages) {
+            await db.insert(messages).values({
+              conversationId,
+              role: msg.role,
+              content: msg.content,
+            });
+          }
+
+          imported++;
+        }
+
+        return {
+          imported,
+          skipped,
+          replaced,
+          isSimulation: false,
+        };
+      } catch (error) {
+        console.error("Error importing conversations:", error);
+        throw new Error("Failed to import conversations");
       }
     }),
 });

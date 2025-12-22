@@ -250,16 +250,111 @@ export function ConversationHistory({
     }
   };
 
+  // Predefined tags for suggestions
+  const PREDEFINED_TAGS = [
+    "backup", "configuration", "monitoring", "debug", "installation",
+    "sécurité", "réseau", "gpu", "tâches", "calendrier",
+    "urgent", "important", "archive", "documentation", "erreur"
+  ];
+
+  // Get suggested tags (predefined + existing)
+  const getSuggestedTags = () => {
+    const existingTags = allTagsQuery.data?.tags || [];
+    const allTags = Array.from(new Set([...PREDEFINED_TAGS, ...existingTags]));
+    const input = newTag.toLowerCase().trim();
+    if (!input) return allTags.slice(0, 8);
+    return allTags.filter(t => t.toLowerCase().includes(input)).slice(0, 8);
+  };
+
   // Handle tag addition
-  const handleAddTag = (conversationId: number) => {
-    if (newTag.trim()) {
-      addTagMutation.mutate({ conversationId, tag: newTag.trim() });
+  const handleAddTag = (conversationId: number, tagToAdd?: string) => {
+    const tag = tagToAdd || newTag.trim();
+    if (tag) {
+      addTagMutation.mutate({ conversationId, tag });
     }
   };
 
   // Handle tag removal
   const handleRemoveTag = (conversationId: number, tag: string) => {
     removeTagMutation.mutate({ conversationId, tag });
+  };
+
+  // Bulk export mutation
+  const bulkExportQuery = trpc.conversations.exportAll.useQuery(undefined, { enabled: false });
+
+  // Bulk import mutation
+  const bulkImportMutation = trpc.conversations.importAll.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      toast.success(`Import terminé: ${data.imported} importées, ${data.skipped} ignorées, ${data.replaced} remplacées`);
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'import en masse");
+    },
+  });
+
+  // Handle bulk export
+  const handleBulkExport = async () => {
+    try {
+      const result = await bulkExportQuery.refetch();
+      if (!result.data) {
+        toast.error("Aucune donnée à exporter");
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `jarvis-conversations-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`${result.data.conversations.length} conversations exportées`);
+    } catch (error) {
+      console.error("Bulk export error:", error);
+      toast.error("Erreur lors de l'export en masse");
+    }
+  };
+
+  // Handle bulk import
+  const handleBulkImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // Validate structure
+        if (!data.conversations || !Array.isArray(data.conversations)) {
+          toast.error("Format de fichier invalide. Utilisez un export Jarvis.");
+          return;
+        }
+
+        // Ask for merge strategy
+        const strategy = window.confirm(
+          `Importer ${data.conversations.length} conversations ?\n\n` +
+          "OK = Ignorer les doublons\n" +
+          "Annuler = Remplacer les doublons"
+        ) ? "skip" : "replace";
+
+        bulkImportMutation.mutate({
+          conversations: data.conversations,
+          mergeStrategy: strategy,
+        });
+      } catch (error) {
+        console.error("Bulk import error:", error);
+        toast.error("Erreur lors de la lecture du fichier");
+      }
+    };
+    input.click();
   };
 
   // Handle import from JSON file
@@ -358,14 +453,33 @@ export function ConversationHistory({
               <Archive className="h-4 w-4 mr-1" />
               Archives
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImportFile}
-              title="Importer une conversation depuis un fichier JSON"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title="Synchronisation multi-appareils"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Sync
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleImportFile}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importer une conversation
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBulkImport}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importer toutes (sync)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleBulkExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter toutes
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Tags filter */}
@@ -522,26 +636,44 @@ export function ConversationHistory({
                               ))}
                             </div>
                           )}
-                          {/* Add tag input */}
+                          {/* Add tag input with suggestions */}
                           {addingTagToId === conversation.id && (
-                            <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-                              <Input
-                                value={newTag}
-                                onChange={(e) => setNewTag(e.target.value)}
-                                placeholder="Nouveau tag..."
-                                className="h-6 text-xs w-24"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleAddTag(conversation.id);
-                                  if (e.key === "Escape") setAddingTagToId(null);
-                                }}
-                              />
-                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => handleAddTag(conversation.id)}>
-                                OK
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => setAddingTagToId(null)}>
-                                <X className="h-3 w-3" />
-                              </Button>
+                            <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={newTag}
+                                  onChange={(e) => setNewTag(e.target.value)}
+                                  placeholder="Nouveau tag..."
+                                  className="h-7 text-xs flex-1"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleAddTag(conversation.id);
+                                    if (e.key === "Escape") setAddingTagToId(null);
+                                  }}
+                                />
+                                <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => handleAddTag(conversation.id)}>
+                                  OK
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 px-1" onClick={() => setAddingTagToId(null)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              {/* Tag suggestions */}
+                              <div className="flex flex-wrap gap-1">
+                                {getSuggestedTags()
+                                  .filter(t => !(conversation as { tags?: string[] }).tags?.includes(t))
+                                  .slice(0, 6)
+                                  .map((tag) => (
+                                    <Badge
+                                      key={tag}
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+                                      onClick={() => handleAddTag(conversation.id, tag)}
+                                    >
+                                      + {tag}
+                                    </Badge>
+                                  ))}
+                              </div>
                             </div>
                           )}
                         </>

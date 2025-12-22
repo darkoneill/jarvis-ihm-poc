@@ -328,3 +328,15 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-147 : Validation et restauration des conversations importées
 - [x] Tests unitaires (228 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.19, STATUS.md)
+
+
+## Phase 27 - Résumé LLM, Tags Prédéfinis et Sync Multi-Appareils (COMPLETED)
+- [x] IHM-150 : Résumé intelligent via LLM actif avec fallback extraction
+- [x] IHM-151 : Prompt optimisé pour résumé de conversation (2-3 phrases)
+- [x] IHM-152 : Tags prédéfinis suggérés (15 tags: backup, config, monitoring, etc.)
+- [x] IHM-153 : Interface de sélection de tags avec autocomplétion
+- [x] IHM-154 : Export en masse de toutes les conversations (exportAll)
+- [x] IHM-155 : Import en masse depuis fichier JSON (importAll)
+- [x] IHM-156 : Stratégies de fusion (skip, replace, merge)
+- [x] Tests unitaires (232 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.20, STATUS.md)

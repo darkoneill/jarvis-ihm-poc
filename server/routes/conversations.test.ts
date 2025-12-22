@@ -228,6 +228,84 @@ describe("Conversations Router", () => {
     });
   });
 
+  describe("exportAll", () => {
+    it("should export all conversations in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.exportAll();
+      
+      expect(result).toHaveProperty("exportDate");
+      expect(result).toHaveProperty("version");
+      expect(result).toHaveProperty("conversations");
+      expect(Array.isArray(result.conversations)).toBe(true);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+
+    it("should include conversation and messages in export", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.exportAll();
+      
+      if (result.conversations.length > 0) {
+        const item = result.conversations[0];
+        expect(item).toHaveProperty("conversation");
+        expect(item).toHaveProperty("messages");
+        expect(item.conversation).toHaveProperty("title");
+        expect(Array.isArray(item.messages)).toBe(true);
+      }
+    });
+  });
+
+  describe("importAll", () => {
+    it("should import multiple conversations in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.importAll({
+        conversations: [
+          {
+            conversation: { title: "Conv 1" },
+            messages: [{ role: "user", content: "Hello" }],
+          },
+          {
+            conversation: { title: "Conv 2" },
+            messages: [{ role: "user", content: "Hi" }],
+          },
+        ],
+        mergeStrategy: "skip",
+      });
+      
+      expect(result).toHaveProperty("imported");
+      expect(result).toHaveProperty("skipped");
+      expect(result).toHaveProperty("replaced");
+      expect(result.imported).toBe(2);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+
+    it("should accept different merge strategies", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const strategies = ["skip", "replace", "merge"] as const;
+      
+      for (const strategy of strategies) {
+        const result = await caller.importAll({
+          conversations: [{
+            conversation: { title: "Test" },
+            messages: [{ role: "user", content: "Test" }],
+          }],
+          mergeStrategy: strategy,
+        });
+        
+        expect(result).toHaveProperty("imported");
+      }
+    });
+  });
+
   describe("generateTitle", () => {
     it("should generate a title from message content", async () => {
       const { conversationsRouter } = await import("./conversations");
