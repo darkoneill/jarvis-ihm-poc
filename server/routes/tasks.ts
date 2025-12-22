@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { tasks, InsertTask } from "../../drizzle/schema";
+import { publishTaskToCore, getTaskSyncStatus } from "../_core/taskSync";
 
 const taskSchema = z.object({
   title: z.string().min(1).max(255),
@@ -47,7 +48,21 @@ export const tasksRouter = router({
       };
       
       const result = await db.insert(tasks).values(newTask);
-      return { id: Number(result[0].insertId), ...newTask };
+      const createdTask = { 
+        id: Number(result[0].insertId), 
+        title: newTask.title,
+        description: newTask.description,
+        priority: newTask.priority || 'medium',
+        status: newTask.status || 'todo',
+        dueDate: newTask.dueDate,
+      };
+      
+      // Publish to Redis Core for synchronization
+      publishTaskToCore(createdTask).catch(err => 
+        console.error('[Tasks] Failed to publish to Core:', err)
+      );
+      
+      return { id: createdTask.id, ...newTask };
     }),
 
   update: publicProcedure
@@ -91,4 +106,9 @@ export const tasksRouter = router({
       await db.delete(tasks).where(eq(tasks.id, input.id));
       return { success: true };
     }),
+
+  // Get task sync status with Redis Core
+  syncStatus: publicProcedure.query(() => {
+    return getTaskSyncStatus();
+  }),
 });

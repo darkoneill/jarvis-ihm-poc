@@ -173,12 +173,12 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-011 : Ajout job au calendrier depuis Dialogue
 - [x] IHM-012 : Documentation accès local-first
 - [x] IHM-013 : Documentation intégration Jarvis Core
-- [ ] IHM-020 : Tests E2E Browser (Playwright)
+- [x] IHM-020 : Tests E2E Browser (Playwright)
 - [x] IHM-030 : PrometheusClient helper créé
 - [x] IHM-031 : HardwareDashboard connecté à Prometheus
 - [x] IHM-040 : Redis Pub/Sub subscriber créé
-- [ ] IHM-050 : Synchroniser tâches avec Redis Core
-- [ ] IHM-060 : Remplacer LLM Forge par API N2
+- [x] IHM-050 : Synchroniser tâches avec Redis Core
+- [x] IHM-060 : Remplacer LLM Forge par API N2 (avec fallback)
 
 ## Phase 14 - Intégration et Documentation (COMPLETED)
 - [x] Fusionner IHM_STATUS.md dans docs/STATUS.md (section IHM)
@@ -196,3 +196,15 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-041 : Logs N0/N1/N2 affichés en temps réel (LogViewer connecté tRPC)
 - [x] Test création de tâche depuis le Dialogue : SUCCÈS
 - [x] Mise à jour docs/STATUS.md sur GitHub
+
+## Phase 16 - Synchronisation Redis, API N2 et Tests E2E (COMPLETED)
+- [x] IHM-050 : Subscriber Redis pour tâches créées par N2/N1 (server/_core/taskSync.ts)
+- [x] IHM-050 : Synchronisation bidirectionnelle tâches IHM ↔ Redis Core
+- [x] IHM-060 : Client API N2 pour le chat (server/_core/n2Client.ts)
+- [x] IHM-060 : Fallback automatique vers Forge si N2 non disponible
+- [x] IHM-020 : Setup Playwright pour tests E2E (playwright.config.ts)
+- [x] IHM-020 : Tests navigation entre modules (e2e/navigation.spec.ts)
+- [x] IHM-020 : Tests chat et création de tâche (e2e/chat.spec.ts)
+- [x] IHM-020 : Tests TaskBoard Kanban (e2e/tasks.spec.ts)
+- [x] IHM-020 : Tests Hardware Dashboard (e2e/hardware.spec.ts)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.9, STATUS.md)

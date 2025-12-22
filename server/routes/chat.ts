@@ -3,6 +3,7 @@ import { publicProcedure, router } from "../_core/trpc";
 import { invokeLLM, Message } from "../_core/llm";
 import { getDb } from "../db";
 import { tasks, scheduledJobs, InsertTask, InsertScheduledJob } from "../../drizzle/schema";
+import { chatWithN2, getN2ClientStatus } from "../_core/n2Client";
 
 // System prompt for Jarvis AI assistant
 const JARVIS_SYSTEM_PROMPT = `Tu es Jarvis v5.9, un assistant IA avancé qui pilote un PC physique via acquisition HDMI, caméra C2I et contrôle Teensy (clavier/souris).
@@ -99,12 +100,33 @@ export const chatRouter = router({
       });
       
       try {
-        // Call LLM
-        const response = await invokeLLM({
-          messages: history,
-        });
+        let assistantMessage: string | undefined;
         
-        const assistantMessage = response.choices[0]?.message?.content;
+        // Try N2 first (100% local), fallback to Forge
+        const n2Status = getN2ClientStatus();
+        if (n2Status.enabled && n2Status.available) {
+          console.log('[Chat] Using N2 Supervisor (local)');
+          const n2Response = await chatWithN2(input.message, {
+            history: history.filter(m => m.role !== 'system').map(m => ({
+              role: m.role as 'user' | 'assistant',
+              content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+            })),
+          });
+          
+          if (n2Response?.success) {
+            assistantMessage = n2Response.message;
+          }
+        }
+        
+        // Fallback to Forge API if N2 not available or failed
+        if (!assistantMessage) {
+          console.log('[Chat] Using Forge API (fallback)');
+          const response = await invokeLLM({
+            messages: history,
+          });
+          const content = response.choices[0]?.message?.content;
+          assistantMessage = typeof content === 'string' ? content : undefined;
+        }
         
         if (typeof assistantMessage === "string") {
           // Parse potential task/job creation
