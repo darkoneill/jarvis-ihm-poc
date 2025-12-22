@@ -35,6 +35,9 @@ import {
   FileText,
   Loader2,
   Download,
+  Tag,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -55,6 +58,9 @@ export function ConversationHistory({
   const [showArchived, setShowArchived] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [newTag, setNewTag] = useState("");
+  const [addingTagToId, setAddingTagToId] = useState<number | null>(null);
 
   const { data, isLoading, refetch } = trpc.conversations.list.useQuery({
     archived: showArchived ? true : undefined,
@@ -90,6 +96,53 @@ export function ConversationHistory({
       enabled: searchQuery.length >= 3 && isSearchingMessages,
     }
   );
+
+  // Tags management
+  const allTagsQuery = trpc.conversations.getAllTags.useQuery();
+  
+  const addTagMutation = trpc.conversations.addTag.useMutation({
+    onSuccess: () => {
+      refetch();
+      setNewTag("");
+      setAddingTagToId(null);
+      toast.success("Tag ajouté");
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'ajout du tag");
+    },
+  });
+
+  const removeTagMutation = trpc.conversations.removeTag.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Tag supprimé");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression du tag");
+    },
+  });
+
+  const generateSummaryMutation = trpc.conversations.generateSummary.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      if (data.summary) {
+        toast.success("Résumé généré");
+      }
+    },
+    onError: () => {
+      toast.error("Erreur lors de la génération du résumé");
+    },
+  });
+
+  const importMutation = trpc.conversations.importConversation.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      toast.success(`Conversation "${data.title}" importée (${data.messageCount} messages)`);
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'import");
+    },
+  });
 
   const handleArchive = (id: number, archived: boolean) => {
     updateMutation.mutate({ id, archived: !archived });
@@ -197,6 +250,62 @@ export function ConversationHistory({
     }
   };
 
+  // Handle tag addition
+  const handleAddTag = (conversationId: number) => {
+    if (newTag.trim()) {
+      addTagMutation.mutate({ conversationId, tag: newTag.trim() });
+    }
+  };
+
+  // Handle tag removal
+  const handleRemoveTag = (conversationId: number, tag: string) => {
+    removeTagMutation.mutate({ conversationId, tag });
+  };
+
+  // Handle import from JSON file
+  const handleImportFile = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        // Validate structure
+        if (!data.conversation || !data.messages) {
+          toast.error("Format de fichier invalide");
+          return;
+        }
+
+        importMutation.mutate({
+          conversation: {
+            title: data.conversation.title || "Conversation importée",
+            summary: data.conversation.summary,
+            tags: data.conversation.tags,
+          },
+          messages: data.messages.map((m: { role: string; content: string; createdAt?: string }) => ({
+            role: m.role as "user" | "assistant" | "system",
+            content: m.content,
+            createdAt: m.createdAt,
+          })),
+        });
+      } catch (error) {
+        console.error("Import error:", error);
+        toast.error("Erreur lors de la lecture du fichier");
+      }
+    };
+    input.click();
+  };
+
+  // Filter conversations by tag
+  const filteredConversations = selectedTag
+    ? data?.conversations.filter(c => (c as { tags?: string[] }).tags?.includes(selectedTag))
+    : data?.conversations;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -249,7 +358,42 @@ export function ConversationHistory({
               <Archive className="h-4 w-4 mr-1" />
               Archives
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImportFile}
+              title="Importer une conversation depuis un fichier JSON"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
           </div>
+
+          {/* Tags filter */}
+          {allTagsQuery.data?.tags && allTagsQuery.data.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              <span className="text-xs text-muted-foreground mr-1 self-center">Tags:</span>
+              {allTagsQuery.data.tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={selectedTag === tag ? "default" : "outline"}
+                  className="cursor-pointer text-xs"
+                  onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+              {selectedTag && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1"
+                  onClick={() => setSelectedTag(null)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Search results in messages */}
           {isSearchingMessages && searchQuery.length >= 3 && (
@@ -296,14 +440,14 @@ export function ConversationHistory({
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
               </div>
-            ) : data?.conversations.length === 0 ? (
+            ) : filteredConversations?.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Aucune conversation trouvée</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {data?.conversations.map((conversation) => (
+                {filteredConversations?.map((conversation) => (
                   <div
                     key={conversation.id}
                     className={cn(
@@ -361,6 +505,45 @@ export function ConversationHistory({
                               </span>
                             )}
                           </div>
+                          {/* Tags display */}
+                          {(conversation as { tags?: string[] }).tags && (conversation as { tags?: string[] }).tags!.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                              {(conversation as { tags?: string[] }).tags!.map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="text-xs cursor-pointer hover:bg-destructive/20"
+                                  onClick={() => handleRemoveTag(conversation.id, tag)}
+                                  title="Cliquer pour supprimer"
+                                >
+                                  {tag}
+                                  <X className="h-3 w-3 ml-1" />
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {/* Add tag input */}
+                          {addingTagToId === conversation.id && (
+                            <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                value={newTag}
+                                onChange={(e) => setNewTag(e.target.value)}
+                                placeholder="Nouveau tag..."
+                                className="h-6 text-xs w-24"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleAddTag(conversation.id);
+                                  if (e.key === "Escape") setAddingTagToId(null);
+                                }}
+                              />
+                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => handleAddTag(conversation.id)}>
+                                OK
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => setAddingTagToId(null)}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -388,6 +571,22 @@ export function ConversationHistory({
                         }}>
                           <Archive className="h-4 w-4 mr-2" />
                           {conversation.archived ? "Désarchiver" : "Archiver"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          setAddingTagToId(conversation.id);
+                          setNewTag("");
+                        }}>
+                          <Tag className="h-4 w-4 mr-2" />
+                          Ajouter un tag
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          generateSummaryMutation.mutate({ conversationId: conversation.id });
+                        }}>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Générer résumé
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={(e) => {

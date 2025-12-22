@@ -152,6 +152,7 @@ export const conversations = mysqlTable("conversations", {
   userId: int("userId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   summary: text("summary"),
+  tags: json("tags").$type<string[]>(),
   messageCount: int("messageCount").default(0).notNull(),
   lastMessageAt: timestamp("lastMessageAt"),
   archived: boolean("archived").default(false).notNull(),

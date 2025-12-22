@@ -359,6 +359,269 @@ export const conversationsRouter = router({
       }
     }),
 
+  // Generate summary using LLM
+  generateSummary: publicProcedure
+    .input(z.object({ conversationId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return { 
+          summary: "Résumé de démonstration: Discussion générale avec l'assistant Jarvis.",
+          isSimulation: true 
+        };
+      }
+
+      try {
+        // Get conversation messages
+        const conversationMessages = await db
+          .select()
+          .from(messages)
+          .where(eq(messages.conversationId, input.conversationId))
+          .orderBy(messages.createdAt)
+          .limit(20);
+
+        if (conversationMessages.length === 0) {
+          return { summary: null, isSimulation: false };
+        }
+
+        // Build context for summary generation
+        const context = conversationMessages
+          .map(m => `${m.role === 'user' ? 'Utilisateur' : 'Jarvis'}: ${m.content.substring(0, 200)}`)
+          .join('\n');
+
+        // Generate summary using simple extraction (no LLM call to avoid complexity)
+        // Extract key topics from the conversation
+        const topics = new Set<string>();
+        const keywords = ['configuration', 'backup', 'monitoring', 'installation', 'erreur', 'problème', 
+                         'aide', 'comment', 'pourquoi', 'quand', 'système', 'fichier', 'données'];
+        
+        for (const msg of conversationMessages) {
+          const lowerContent = msg.content.toLowerCase();
+          for (const keyword of keywords) {
+            if (lowerContent.includes(keyword)) {
+              topics.add(keyword);
+            }
+          }
+        }
+
+        // Generate a simple summary
+        const topicList = Array.from(topics).slice(0, 3);
+        const summary = topicList.length > 0
+          ? `Discussion sur ${topicList.join(', ')}. ${conversationMessages.length} messages échangés.`
+          : `Conversation de ${conversationMessages.length} messages avec l'assistant Jarvis.`;
+
+        // Update conversation with summary
+        await db
+          .update(conversations)
+          .set({ summary })
+          .where(
+            and(
+              eq(conversations.id, input.conversationId),
+              eq(conversations.userId, ctx.user.id)
+            )
+          );
+
+        return { summary, isSimulation: false };
+      } catch (error) {
+        console.error("Error generating summary:", error);
+        return { summary: null, isSimulation: false };
+      }
+    }),
+
+  // Add tags to a conversation
+  addTag: publicProcedure
+    .input(z.object({ 
+      conversationId: z.number(),
+      tag: z.string().min(1).max(50)
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return { success: true, tags: [input.tag], isSimulation: true };
+      }
+
+      try {
+        // Get current tags
+        const conv = await db
+          .select({ tags: conversations.tags })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.id, input.conversationId),
+              eq(conversations.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        const currentTags = conv[0]?.tags || [];
+        const normalizedTag = input.tag.toLowerCase().trim();
+        
+        // Don't add duplicate tags
+        if (currentTags.includes(normalizedTag)) {
+          return { success: true, tags: currentTags, isSimulation: false };
+        }
+
+        const newTags = [...currentTags, normalizedTag];
+
+        await db
+          .update(conversations)
+          .set({ tags: newTags })
+          .where(
+            and(
+              eq(conversations.id, input.conversationId),
+              eq(conversations.userId, ctx.user.id)
+            )
+          );
+
+        return { success: true, tags: newTags, isSimulation: false };
+      } catch (error) {
+        console.error("Error adding tag:", error);
+        throw new Error("Failed to add tag");
+      }
+    }),
+
+  // Remove tag from a conversation
+  removeTag: publicProcedure
+    .input(z.object({ 
+      conversationId: z.number(),
+      tag: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return { success: true, tags: [], isSimulation: true };
+      }
+
+      try {
+        const conv = await db
+          .select({ tags: conversations.tags })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.id, input.conversationId),
+              eq(conversations.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        const currentTags = conv[0]?.tags || [];
+        const newTags = currentTags.filter(t => t !== input.tag.toLowerCase().trim());
+
+        await db
+          .update(conversations)
+          .set({ tags: newTags })
+          .where(
+            and(
+              eq(conversations.id, input.conversationId),
+              eq(conversations.userId, ctx.user.id)
+            )
+          );
+
+        return { success: true, tags: newTags, isSimulation: false };
+      } catch (error) {
+        console.error("Error removing tag:", error);
+        throw new Error("Failed to remove tag");
+      }
+    }),
+
+  // Get all unique tags for a user
+  getAllTags: publicProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return { 
+          tags: ['configuration', 'backup', 'monitoring', 'aide'], 
+          isSimulation: true 
+        };
+      }
+
+      try {
+        const results = await db
+          .select({ tags: conversations.tags })
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id));
+
+        // Collect all unique tags
+        const allTags = new Set<string>();
+        for (const row of results) {
+          if (row.tags) {
+            for (const tag of row.tags) {
+              allTags.add(tag);
+            }
+          }
+        }
+
+        return { tags: Array.from(allTags).sort(), isSimulation: false };
+      } catch (error) {
+        console.error("Error getting tags:", error);
+        return { tags: [], isSimulation: false };
+      }
+    }),
+
+  // Import conversation from JSON
+  importConversation: publicProcedure
+    .input(z.object({
+      conversation: z.object({
+        title: z.string(),
+        summary: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+      }),
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string(),
+        createdAt: z.string().optional(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      
+      if (!db || !ctx.user) {
+        return { 
+          id: Date.now(),
+          title: input.conversation.title,
+          messageCount: input.messages.length,
+          isSimulation: true 
+        };
+      }
+
+      try {
+        // Create conversation
+        const result = await db.insert(conversations).values({
+          userId: ctx.user.id,
+          title: input.conversation.title,
+          summary: input.conversation.summary,
+          tags: input.conversation.tags,
+          messageCount: input.messages.length,
+          lastMessageAt: new Date(),
+        });
+
+        const conversationId = Number(result[0].insertId);
+
+        // Add messages
+        for (const msg of input.messages) {
+          await db.insert(messages).values({
+            conversationId,
+            role: msg.role,
+            content: msg.content,
+          });
+        }
+
+        return {
+          id: conversationId,
+          title: input.conversation.title,
+          messageCount: input.messages.length,
+          isSimulation: false,
+        };
+      } catch (error) {
+        console.error("Error importing conversation:", error);
+        throw new Error("Failed to import conversation");
+      }
+    }),
+
   // Search conversations
   search: publicProcedure
     .input(z.object({ query: z.string().min(1) }))

@@ -315,3 +315,16 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-133 : Export de conversation depuis l'historique (Markdown/JSON)
 - [x] Tests unitaires (223 tests passent)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.18, STATUS.md)
+
+
+## Phase 26 - Résumé Auto, Tags et Import (COMPLETED)
+- [x] IHM-140 : Résumé automatique des conversations (extraction mots-clés)
+- [x] IHM-141 : Génération du résumé via menu contextuel
+- [x] IHM-142 : Affichage du résumé dans l'historique
+- [x] IHM-143 : Tags et catégories pour les conversations (champ JSON)
+- [x] IHM-144 : Interface de gestion des tags (ajout/suppression)
+- [x] IHM-145 : Filtrage par tags dans l'historique
+- [x] IHM-146 : Import de conversation depuis fichier JSON
+- [x] IHM-147 : Validation et restauration des conversations importées
+- [x] Tests unitaires (228 tests passent)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.19, STATUS.md)

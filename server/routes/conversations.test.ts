@@ -143,6 +143,91 @@ describe("Conversations Router", () => {
     });
   });
 
+  describe("generateSummary", () => {
+    it("should generate a summary in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.generateSummary({ conversationId: 1 });
+      
+      expect(result).toHaveProperty("summary");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("addTag", () => {
+    it("should add a tag in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.addTag({ conversationId: 1, tag: "backup" });
+      
+      expect(result).toHaveProperty("success");
+      expect(result.success).toBe(true);
+      expect(result).toHaveProperty("tags");
+      expect(result.tags).toContain("backup");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("removeTag", () => {
+    it("should remove a tag in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.removeTag({ conversationId: 1, tag: "backup" });
+      
+      expect(result).toHaveProperty("success");
+      expect(result.success).toBe(true);
+      expect(result).toHaveProperty("tags");
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("getAllTags", () => {
+    it("should return all tags in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.getAllTags();
+      
+      expect(result).toHaveProperty("tags");
+      expect(Array.isArray(result.tags)).toBe(true);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
+  describe("importConversation", () => {
+    it("should import a conversation in simulation mode", async () => {
+      const { conversationsRouter } = await import("./conversations");
+      const caller = conversationsRouter.createCaller({ user: null } as any);
+      
+      const result = await caller.importConversation({
+        conversation: {
+          title: "Imported Conversation",
+          summary: "Test summary",
+          tags: ["imported", "test"],
+        },
+        messages: [
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: "Hi there!" },
+        ],
+      });
+      
+      expect(result).toHaveProperty("id");
+      expect(result).toHaveProperty("title");
+      expect(result.title).toBe("Imported Conversation");
+      expect(result).toHaveProperty("messageCount");
+      expect(result.messageCount).toBe(2);
+      expect(result).toHaveProperty("isSimulation");
+      expect(result.isSimulation).toBe(true);
+    });
+  });
+
   describe("generateTitle", () => {
     it("should generate a title from message content", async () => {
       const { conversationsRouter } = await import("./conversations");
