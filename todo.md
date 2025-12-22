@@ -208,3 +208,20 @@ L'IHM est une interface de supervision, pas l'outil principal.
 - [x] IHM-020 : Tests TaskBoard Kanban (e2e/tasks.spec.ts)
 - [x] IHM-020 : Tests Hardware Dashboard (e2e/hardware.spec.ts)
 - [x] Mise à jour GitHub (CHANGELOG v5.9.9, STATUS.md)
+
+## Phase 17 - Configuration N2, Alertes Redis et Tests E2E (COMPLETED)
+- [x] Configuration variables d'environnement N2 (N2_ENABLED, N2_API_URL)
+- [x] Valeurs par défaut dans le code (N2_ENABLED=false, N2_API_URL=http://localhost:8000)
+- [x] Documentation configuration N2 pour production
+- [x] Alertes Redis pour tâches critiques créées par N2/N1
+- [x] Notifications push via WebSocket pour tâches HIGH/CRITICAL
+- [x] Exécution tests Vitest (158 tests passent, 100%)
+- [x] Tests E2E Playwright créés (4 fichiers)
+- [x] Mise à jour GitHub (CHANGELOG v5.9.10, STATUS.md)
+
+## Phase 18 - Déploiement Local-First (TODO)
+- [ ] IHM-090 : Configuration mDNS/Avahi (jarvis.local)
+- [ ] IHM-091 : Certificats HTTPS auto-signés
+- [ ] IHM-092 : Guide VPN WireGuard
+- [ ] IHM-093 : Script de déploiement local
+- [ ] Validation sur DGX Spark avec N2 Supervisor actif

@@ -46,6 +46,36 @@ let isConnected = false;
 let subscriber: any = null;
 const pendingTasks: CoreTask[] = [];
 
+// Alert callbacks
+type AlertCallback = (task: CoreTask, alertType: 'critical' | 'high' | 'new') => void;
+const alertCallbacks: AlertCallback[] = [];
+
+/**
+ * Register a callback for task alerts
+ */
+export function onTaskAlert(callback: AlertCallback): () => void {
+  alertCallbacks.push(callback);
+  return () => {
+    const index = alertCallbacks.indexOf(callback);
+    if (index > -1) {
+      alertCallbacks.splice(index, 1);
+    }
+  };
+}
+
+/**
+ * Emit alert to all registered callbacks
+ */
+function emitAlert(task: CoreTask, alertType: 'critical' | 'high' | 'new'): void {
+  for (const callback of alertCallbacks) {
+    try {
+      callback(task, alertType);
+    } catch (error) {
+      console.error('[TaskSync] Alert callback error:', error);
+    }
+  }
+}
+
 /**
  * Initialize Redis subscriber for task synchronization
  */
@@ -122,6 +152,17 @@ async function handleTaskCreated(message: string): Promise<void> {
     });
 
     console.log(`[TaskSync] Task created: ${coreTask.title}`);
+
+    // Emit alert for critical/high priority tasks
+    if (coreTask.priority === 'critical') {
+      emitAlert(coreTask, 'critical');
+      console.log(`[TaskSync] 🚨 CRITICAL ALERT: ${coreTask.title}`);
+    } else if (coreTask.priority === 'high') {
+      emitAlert(coreTask, 'high');
+      console.log(`[TaskSync] ⚠️ HIGH PRIORITY: ${coreTask.title}`);
+    } else {
+      emitAlert(coreTask, 'new');
+    }
   } catch (error) {
     console.error('[TaskSync] Error handling task created:', error);
   }

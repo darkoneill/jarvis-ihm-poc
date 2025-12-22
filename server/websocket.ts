@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
+import { onTaskAlert } from "./_core/taskSync";
 
 // Types for WebSocket messages
 export interface AlertMessage {
@@ -82,6 +83,9 @@ export function initWebSocket(server: Server): WebSocketServer {
 
   // Start monitoring simulation
   startMonitoringSimulation();
+
+  // Register for Redis task alerts
+  registerTaskAlerts();
 
   console.log("[WebSocket] Server initialized on /ws");
   return wss;
@@ -278,4 +282,39 @@ export function stopMonitoringSimulation() {
 // Get connected clients count
 export function getConnectedClientsCount(): number {
   return clients.size;
+}
+
+// Register for Redis task alerts
+function registerTaskAlerts() {
+  onTaskAlert((task, alertType) => {
+    const severityMap = {
+      critical: 'critical' as const,
+      high: 'warning' as const,
+      new: 'info' as const,
+    };
+
+    const titleMap = {
+      critical: '🚨 Tâche Critique',
+      high: '⚠️ Tâche Haute Priorité',
+      new: '📝 Nouvelle Tâche',
+    };
+
+    sendAlert(
+      severityMap[alertType],
+      'system',
+      titleMap[alertType],
+      `${task.title} (depuis ${task.source.toUpperCase()})`,
+      {
+        task_id: task.id,
+        trace_id: task.trace_id,
+        priority: task.priority,
+        source: task.source,
+        due_date: task.due_date,
+      }
+    );
+
+    console.log(`[WebSocket] Task alert sent: ${alertType} - ${task.title}`);
+  });
+
+  console.log('[WebSocket] Registered for Redis task alerts');
 }
