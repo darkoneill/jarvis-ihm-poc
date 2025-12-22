@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Bot, Mic, Paperclip, Send, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface Message {
   id: string;
@@ -25,6 +26,28 @@ export function ChatInterface() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { isConnected, sendMessage } = useWebSocket("/ws/chat", {
+    onMessage: (data) => {
+      if (data.type === "chunk") {
+        // Streaming response
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === data.id) {
+            return prev.map(m => m.id === data.id ? { ...m, content: m.content + data.content } : m);
+          } else {
+            return [...prev, { id: data.id, role: "assistant", content: data.content, timestamp: new Date() }];
+          }
+        });
+        setIsTyping(false);
+      } else if (data.type === "full") {
+        // Full message
+        setMessages((prev) => [...prev, { id: data.id, role: "assistant", content: data.content, timestamp: new Date() }]);
+        setIsTyping(false);
+      }
+    },
+    onOpen: () => console.log("Chat WebSocket connected"),
+  });
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -50,38 +73,42 @@ export function ChatInterface() {
     setInputValue("");
     setIsTyping(true);
 
-    // Simulate AI response streaming
-    setTimeout(() => {
-      const responseId = (Date.now() + 1).toString();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: responseId,
-          role: "assistant",
-          content: "",
-          timestamp: new Date(),
-        },
-      ]);
+    if (isConnected) {
+      sendMessage({ type: "message", content: inputValue });
+    } else {
+      // Fallback simulation if WS not connected (for PoC demo)
+      setTimeout(() => {
+        const responseId = (Date.now() + 1).toString();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: responseId,
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+          },
+        ]);
 
-      const responseText = "Ceci est une simulation de réponse en streaming. Dans la version finale, ce contenu proviendra du WebSocket connecté au backend Jarvis (N2 Orchestrator).\n\nVoici un exemple de code :\n```python\ndef hello_world():\n    print('Hello Jarvis')\n```";
-      let charIndex = 0;
+        const responseText = "Mode Simulation (WebSocket déconnecté). Le backend Jarvis n'est pas détecté.\n\nVoici un exemple de code :\n```python\ndef hello_world():\n    print('Hello Jarvis')\n```";
+        let charIndex = 0;
 
-      const interval = setInterval(() => {
-        if (charIndex < responseText.length) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === responseId
-                ? { ...msg, content: msg.content + responseText[charIndex] }
-                : msg
-            )
-          );
-          charIndex++;
-        } else {
-          clearInterval(interval);
-          setIsTyping(false);
-        }
-      }, 20); // Typing speed simulation
-    }, 1000);
+        const interval = setInterval(() => {
+          if (charIndex < responseText.length) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === responseId
+                  ? { ...msg, content: msg.content + responseText[charIndex] }
+                  : msg
+              )
+            );
+            charIndex++;
+          } else {
+            clearInterval(interval);
+            setIsTyping(false);
+          }
+        }, 20);
+      }, 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -102,8 +129,8 @@ export function ChatInterface() {
           <div>
             <h2 className="font-semibold text-sm">Jarvis N2 Orchestrator</h2>
             <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-              <span className="text-xs text-muted-foreground">Connected via WebSocket</span>
+              <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-orange-500")}></span>
+              <span className="text-xs text-muted-foreground">{isConnected ? "Connected via WebSocket" : "Simulation Mode (Disconnected)"}</span>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Bug, CheckCircle, Info, Pause, Play, Search, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface LogEntry {
   id: string;
@@ -23,9 +24,23 @@ export function LogViewer() {
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Simulate incoming logs
+  const { isConnected } = useWebSocket("/ws/logs", {
+    onMessage: (data) => {
+      if (isPaused) return;
+      // Expecting data to be LogEntry or array of LogEntry
+      const newLogs = Array.isArray(data) ? data : [data];
+      // Ensure timestamp is Date object
+      const processedLogs = newLogs.map(log => ({
+        ...log,
+        timestamp: new Date(log.timestamp)
+      }));
+      setLogs((prev) => [...prev.slice(-999), ...processedLogs]);
+    }
+  });
+
+  // Simulate incoming logs ONLY if not connected (Fallback)
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || isConnected) return;
 
     const interval = setInterval(() => {
       const levels: LogEntry["level"][] = ["INFO", "INFO", "INFO", "DEBUG", "WARN", "ERROR"];
@@ -54,7 +69,7 @@ export function LogViewer() {
     }, 800);
 
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, isConnected]);
 
   // Auto-scroll
   useEffect(() => {
@@ -195,7 +210,10 @@ export function LogViewer() {
       {/* Footer Status */}
       <div className="px-2 py-1 bg-muted/30 border-t border-border text-[10px] text-muted-foreground flex justify-between">
         <span>{filteredLogs.length} logs affichés (Total: {logs.length})</span>
-        <span>{isPaused ? "PAUSED" : "LIVE"}</span>
+        <div className="flex items-center gap-2">
+          <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-orange-500")}></span>
+          <span>{isPaused ? "PAUSED" : (isConnected ? "LIVE (WS)" : "LIVE (SIM)")}</span>
+        </div>
       </div>
     </div>
   );

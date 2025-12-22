@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
+  Activity,
   Bot,
   Calendar,
   ChevronLeft,
@@ -29,6 +30,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Bot, label: "Dialogue", href: "/" },
     { icon: FileText, label: "Logs", href: "/logs" },
     { icon: LayoutDashboard, label: "Tâches", href: "/tasks" },
+    { icon: Activity, label: "Hardware", href: "/hardware" },
     { icon: Calendar, label: "Calendrier", href: "/calendar" },
     { icon: Library, label: "Connaissances", href: "/knowledge" },
     { icon: Workflow, label: "Workflows", href: "/workflows" },

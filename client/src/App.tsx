@@ -1,6 +1,8 @@
 import { ChatInterface } from "@/components/ChatInterface";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { LogViewer } from "@/components/LogViewer";
+import { TaskBoard } from "@/components/TaskBoard";
+import { HardwareDashboard } from "@/components/HardwareDashboard";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
@@ -8,7 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch } from "wouter";
 
 // Placeholder components for other routes
-const TasksPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Tâches (En développement)</div>;
+// const TasksPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Tâches (En développement)</div>;
 const CalendarPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Calendrier (En développement)</div>;
 const KnowledgePlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Connaissances (En développement)</div>;
 const WorkflowsPlaceholder = () => <div className="p-4 border border-dashed border-border rounded-lg h-full flex items-center justify-center text-muted-foreground">Module Workflows (En développement)</div>;
@@ -20,7 +22,8 @@ function Router() {
       <Switch>
         <Route path="/" component={ChatInterface} />
         <Route path="/logs" component={LogViewer} />
-        <Route path="/tasks" component={TasksPlaceholder} />
+        <Route path="/tasks" component={TaskBoard} />
+        <Route path="/hardware" component={HardwareDashboard} />
         <Route path="/calendar" component={CalendarPlaceholder} />
         <Route path="/knowledge" component={KnowledgePlaceholder} />
         <Route path="/workflows" component={WorkflowsPlaceholder} />
