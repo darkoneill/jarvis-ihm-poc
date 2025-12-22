@@ -318,42 +318,6 @@ export function KnowledgeSearchWidget() {
   );
 }
 
-// Workflow Status Widget
-export function WorkflowStatusWidget() {
-  const { data: workflows } = trpc.workflows.list.useQuery();
-  const activeWorkflows = workflows?.filter((w) => w.enabled).slice(0, 3) || [];
-
-  return (
-    <div className="space-y-2">
-      {activeWorkflows.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          Aucun workflow actif
-        </p>
-      ) : (
-        activeWorkflows.map((wf) => (
-          <div
-            key={wf.id}
-            className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <span className="text-sm truncate max-w-[150px]">{wf.name}</span>
-            </div>
-            <Badge variant="outline" className="text-green-500 border-green-500/30 text-xs">
-              Actif
-            </Badge>
-          </div>
-        ))
-      )}
-      <Link href="/workflows">
-        <Button variant="ghost" size="sm" className="w-full mt-2">
-          Gérer les workflows
-        </Button>
-      </Link>
-    </div>
-  );
-}
-
 // Widget renderer
 export function renderWidget(type: string, config: Record<string, unknown> = {}) {
   switch (type) {
@@ -375,8 +339,6 @@ export function renderWidget(type: string, config: Record<string, unknown> = {})
       return <ChatPreviewWidget />;
     case "knowledge_search":
       return <KnowledgeSearchWidget />;
-    case "workflow_status":
-      return <WorkflowStatusWidget />;
     default:
       return <div className="text-sm text-muted-foreground">Widget inconnu</div>;
   }

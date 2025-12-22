@@ -23,10 +23,8 @@ import {
   Library,
   LogOut,
   Monitor,
-  Plug,
   Settings,
   User,
-  Workflow,
   Wifi,
   WifiOff
 } from "lucide-react";
@@ -61,8 +59,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Cpu, label: "Hardware", href: "/hardware" },
     { icon: Calendar, label: "Calendrier", href: "/calendar" },
     { icon: Library, label: "Connaissances", href: "/knowledge" },
-    { icon: Workflow, label: "Workflows", href: "/workflows" },
-    { icon: Plug, label: "Plugins", href: "/plugins" },
   ];
 
   // Get user initials for avatar

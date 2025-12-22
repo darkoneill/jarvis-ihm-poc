@@ -18,11 +18,9 @@ import { TaskBoard } from "./components/TaskBoard";
 import { HardwareDashboard } from "./components/HardwareDashboard";
 import { CalendarView } from "./components/CalendarView";
 import { KnowledgeBase } from "./components/KnowledgeBase";
-import { WorkflowEditor } from "./components/WorkflowEditor";
 import { DashboardLayout } from "./components/DashboardLayout";
 import SettingsPage from "./pages/SettingsPage";
 import DashboardPage from "./pages/DashboardPage";
-import PluginsPage from "./pages/PluginsPage";
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -97,13 +95,6 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/workflows">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <WorkflowEditor />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <DashboardLayout>
@@ -115,13 +106,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <DashboardPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/plugins">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <PluginsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

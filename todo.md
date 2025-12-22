@@ -126,3 +126,50 @@
 - [x] Synchronisation entre les fenêtres (BroadcastChannel API)
 - [x] Persistance de la configuration multi-écran
 - [x] Tests unitaires (177 tests passés)
+
+## Phase 13 - Restructuration IHM v5.9.6 (COMPLETED)
+- [x] Suppression module Workflow (hors scope ISO 42001)
+- [x] Suppression module Plugins (risque sécurité)
+- [x] Nettoyage navigation sidebar (7 modules conservés)
+- [x] Mise à jour App.tsx routes
+- [x] Mise à jour routers.ts backend
+- [x] Mise à jour CHANGELOG.md GitHub
+- [x] Mise à jour README.md GitHub
+- [x] Création docs/IHM_STATUS.md GitHub (Source of Truth)
+- [x] Mise à jour docs/README.md GitHub
+
+## Vision Jarvis IHM
+
+**Jarvis n'est PAS un chatbot.** C'est un assistant IA qui pilote un PC physique via :
+- Acquisition HDMI (il "voit" l'écran)
+- Caméra C2I (vision physique)
+- Teensy (contrôle clavier/souris)
+
+L'IHM est une interface de supervision, pas l'outil principal.
+
+## Modules Conservés
+
+| Module | Description |
+|--------|-------------|
+| Dialogue | Chat avec Jarvis (LLM Forge API) |
+| Dashboard | Widgets personnalisables |
+| Logs | Visualisation des logs |
+| Tâches | Kanban avec workflow |
+| Hardware | Métriques temps réel (intégrées, pas de Grafana) |
+| Calendrier | Jobs planifiés |
+| Connaissances | Documents + RAG |
+
+## Architecture d'Accès
+
+| Phase | Méthode |
+|-------|---------|
+| Phase 1 | Local uniquement (http://jarvis.local:3000) |
+| Phase 2 | Réseau local + authentification |
+| Phase 3 | VPN WireGuard pour accès distant |
+
+## Prochaines Étapes
+
+- [ ] IHM-010 : Création tâche depuis Dialogue
+- [ ] IHM-011 : Ajout tâche au calendrier depuis Dialogue
+- [ ] IHM-012 : Configuration accès local-first
+- [ ] IHM-020 : Tests E2E Browser (Playwright)

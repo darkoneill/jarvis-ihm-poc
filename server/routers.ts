@@ -5,14 +5,12 @@ import { publicProcedure, router } from "./_core/trpc";
 import { tasksRouter } from "./routes/tasks";
 import { scheduledJobsRouter } from "./routes/scheduledJobs";
 import { knowledgeRouter } from "./routes/knowledge";
-import { workflowsRouter } from "./routes/workflows";
 import { chatRouter } from "./routes/chat";
 import { hardwareRouter } from "./routes/hardware";
 import { exportRouter } from "./routes/export";
 import { preferencesRouter } from "./routes/preferences";
 import { dashboardRouter } from "./routes/dashboard";
 import { conversationsRouter } from "./routes/conversations";
-import { pluginsRouter } from "./routes/plugins";
 import { customWidgetsRouter } from "./routes/customWidgets";
 import { themesRouter } from "./routes/themes";
 
@@ -34,14 +32,12 @@ export const appRouter = router({
   tasks: tasksRouter,
   scheduledJobs: scheduledJobsRouter,
   knowledge: knowledgeRouter,
-  workflows: workflowsRouter,
   chat: chatRouter,
   hardware: hardwareRouter,
   export: exportRouter,
   preferences: preferencesRouter,
   dashboard: dashboardRouter,
   conversations: conversationsRouter,
-  plugins: pluginsRouter,
   customWidgets: customWidgetsRouter,
   themes: themesRouter,
 });
