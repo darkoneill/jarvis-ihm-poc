@@ -1,0 +1,48 @@
+# Jarvis IHM - Docker Compose pour VPS
+# Intégration avec HugiMunr (N2/N1/N0)
+version: '3.8'
+
+services:
+  # ============================================
+  # Application IHM
+  # ============================================
+  jarvis-ihm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis-ihm
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Base de données SQLite (embarquée)
+      - DATABASE_URL=file:/app/data/jarvis.db
+      # Authentification locale
+      - LOCAL_AUTH_ENABLED=true
+      - JWT_SECRET=${JWT_SECRET:-HugiMunr-2026-Secret}
+      # Intégration HugiMunr N2 (Orchestrator)
+      - N2_ENABLED=true
+      - N2_API_URL=http://10.0.0.1:8000
+      # LLM via OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Redis partagé avec HugiMunr
+      - REDIS_URL=redis://10.0.0.1:6379
+    volumes:
+      - jarvis-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - hugimunr-network
+
+networks:
+  hugimunr-network:
+    driver: bridge
+
+volumes:
+  jarvis-data:
